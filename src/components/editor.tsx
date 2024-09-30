@@ -3,14 +3,13 @@ import "quill/dist/quill.snow.css";
 import { Button } from "./ui/button";
 import { MutableRefObject, useEffect, useLayoutEffect, useRef, useState } from "react";
 import{PiTextAa} from"react-icons/pi";
-import { ImageIcon,Smile } from "lucide-react";
+import { ImageIcon,Smile, XIcon } from "lucide-react";
 import{MdSend} from"react-icons/md";
 import { Hint } from "./ui/hint";
 import { Delta,Op } from "quill/core";
 import { cn } from "@/lib/utils";
-import { current } from "../../convex/members";
-
-
+import { EmojiPopover } from "./emoji-popover";
+import Image from"next/image";
 
 
 
@@ -47,15 +46,17 @@ const Editor = ({
 ) => {
      
     const[text,setText]=useState("");
+    const[image,setImage]=useState<File|null>(null);
+    
 const[isToolbarVisible,setIsToolbarVisible]=useState(false);
 
- const containerRef = useRef<HTMLDivElement>(null);
-     
+  const containerRef = useRef<HTMLDivElement>(null);
   const submitRef=useRef(onSubmit);
   const placeholderRef=useRef(placeholder);
   const quillRef=useRef<Quill|null>(null);
   const defaultValueRef=useRef(defaultValue);
   const disabledRef=useRef(disabled);
+  const imageElementRef=useRef<HTMLInputElement>(null);
 
         useLayoutEffect(()=>{
         submitRef.current=onSubmit;
@@ -157,98 +158,141 @@ const[isToolbarVisible,setIsToolbarVisible]=useState(false);
     
     
 
+    const onEmojiSelect=(emoji:any)=>{
+     const quill=quillRef.current;
+     quill?.insertText(quill?.getSelection()?.length||0,emoji.native);
 
+    }
     const isEmpty=text.replace(/<(.|\n)*?>/g,"" ).trim().length===0;
    console.log({isEmpty,text});
     
-            return (
-                <div className="flex flex-col border border-slate-200 rounded-md overflow-hidden focus-within:border-slate-300 focus-within:shadow-sm transition bg-white">
-                    <div ref={containerRef} className="h-full q-custom" /> {/* Reduced height here */}
-        
-                    <div className="flex px-2 pb-0 z-[5] gap-2">
-                        <Hint label={isToolbarVisible?"Show formatting":"Hide formating"}>
-                            <Button
-                                disabled={disabled}
-                                size="iconSm"
-                                variant="ghost"
-                                onClick={toggleToolbar}
-                            >
-                                <PiTextAa className="size-4" />
-                            </Button>
-                        </Hint>
-        
-                        <Hint label="Emoji">
-                            <Button
-                                disabled={disabled}
-                                size="iconSm"
-                                variant="ghost"
-                                onClick={() => {}}
-                            >
-                                <Smile className="size-4" />
-                            </Button>
-                        </Hint>
-        
-                        {variant === "create" && (
-                            <Hint label="Image">
+         return (
+            
+                <div className="flex flex-col border border-slate-200 rounded-md overflow-hidden focus-within:border-slate-300 focus-within:shadow-sm transition bg-white pb-0">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      ref={imageElementRef}
+                      onChange={(event)=>setImage(event.target.files![0])}
+                     className="hidden"
+                    />
+                    <div>
+                        <div ref={containerRef} className="h-full q-custom" /> {/* Reduced height here */}
+                        
+                        {!!image && (
+                          <div className="p-2">
+                            <div className="relative size-[62px] flex items-center justify-center group/image">
+                            <Hint label="Remove image">
+                            <button
+                             onClick={()=>{
+                                setImage(null);
+                                imageElementRef.current!.value="";
+
+                             }}
+                            className="hidden group-hover/image:flex rounded-full bg-black/70 hover:bg-black absolute -top-2.5 -right-2.5 text-white size-6 z-[4] borde-2 border-white items-center justify-center">
+                                <XIcon className="size-3.5"/>
+                            </button>
+                            </Hint>
+                            <Image 
+                            src={URL.createObjectURL(image)}
+                            alt="Uploaded"
+                            fill
+                            className="rounded-xl  overflow-hidden border object-cover "
+                            />
+                            </div>
+                          
+                          </div>
+
+                        )}
+                        
+                        
+                        <div className="flex px-2 pb-[1px] z-[5] gap-2"> {/* Adjusted padding */}
+                            <Hint label={isToolbarVisible ? "Show formatting" : "Hide formatting"}>
                                 <Button
                                     disabled={disabled}
                                     size="iconSm"
                                     variant="ghost"
-                                    onClick={() => {}}
+                                    onClick={toggleToolbar}
                                 >
-                                    <ImageIcon className="size-4" />
+                                    <PiTextAa className="size-4" />
                                 </Button>
                             </Hint>
-                        )}
         
-                        {variant === "update" && (
-                            <div className="ml-auto flex-center gap-x-2">
+                              <EmojiPopover onEmojiSelect={onEmojiSelect}>
                                 <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => {}}
                                     disabled={disabled}
+                                    size="iconSm"
+                                    variant="ghost"
+
                                 >
-                                    Cancel
+                                    <Smile className="size-4" />
                                 </Button>
+                                </EmojiPopover>
         
+                            {variant === "create" && (
+                                <Hint label="Image">
+                                    <Button
+                                        disabled={disabled}
+                                        size="iconSm"
+                                        variant="ghost"
+                                        onClick={()=>imageElementRef.current?.click()}
+                                    >
+                                        <ImageIcon className="size-4" />
+                                    </Button>
+                                </Hint>
+                            )}
+        
+                            {variant === "update" && (
+                                <div className="ml-auto flex-center gap-x-2">
+                                    <Button
+                                        variant="outline"
+                                        size="iconSm"
+                                        onClick={() => {}}
+                                        disabled={disabled}
+                                    >
+                                        Cancel
+                                    </Button>
+                                    <Button
+                                        size="iconSm"
+                                        onClick={() => {}}
+                                        disabled={disabled || isEmpty}
+                                        className="bg-[#007a5a] hover:bg-[#007a5a]/80 text-white"
+                                    >
+                                        Save
+                                    </Button>
+                                </div>
+                            )}
+        
+                            {variant === "create" && (
                                 <Button
-                                    size="sm"
                                     onClick={() => {}}
-                                    disabled={disabled||isEmpty}
-                                    className="bg-[#007a5a] hover:bg-[#007a5a]/80 text-white"
+                                    disabled={disabled || isEmpty}
+                                    size="sm"
+                                    className={cn(
+                                        "ml-auto",
+                                        isEmpty
+                                            ? "bg-white hover:bg-white text-muted-foreground"
+                                            : "bg-[#007a5a] hover:bg-[#007a5a]/80 text-white"
+                                    )}
                                 >
-                                    Save
+                                    <MdSend className="size-4" />
                                 </Button>
-                            </div>
-                        )}
-        
-                        {variant === "create" && (
-                            <Button
-                                onClick={() => {}}
-                                disabled={disabled || isEmpty}
-                                size="sm"
-                                className={cn(
-                                    "ml-auto",
-                                    isEmpty
-                                        ? "bg-white hover:bg-white text-muted-foreground"
-                                        : "bg-[#007a5a] hover:bg-[#007a5a]/80 text-white"
-                                )}
-                            >
-                                <MdSend className="size-4" />
-                            </Button>
-                        )}
+                            )}
+                        </div>
                     </div>
-        
-                    {/* Shift+Return text moved outside of the editor box */}
-                    <div className="text-[10px]   text-muted-foreground flex justify-end mt-1"> {/* This remains unchanged */}
+                {variant === "create" && (
+                    <div className={cn(
+                        "text-[10px] p-2 text-muted-foreground flex justify-end opacity-0 transition",
+                        !isEmpty && "opacity-100"
+                        )}>
                         <p>
                             <strong>Shift+Return</strong> to add a new line
                         </p>
                     </div>
-                </div>
-            );
-        };
+                )}
+             </div>
         
+            
+                   )};
+             
         export default Editor;
-        
