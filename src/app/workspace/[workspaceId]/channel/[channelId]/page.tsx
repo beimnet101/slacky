@@ -35,8 +35,8 @@ return(
      
 <div className="flex flex-col h-full">
     <Header title={channel.name}/>
-     <div className="flex-1"/>
-     <ChatInput/>
+     <div className="flex-1 "/>
+     <ChatInput placeholder={`Message # ${channel.name}`}/>
 </div>
 );
 
