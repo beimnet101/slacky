@@ -97,7 +97,12 @@ const[isToolbarVisible,setIsToolbarVisible]=useState(false);
                     enter:{
                         key:"Enter",
                         handler:()=>{
-                            return;
+                          const text=quill.getText();
+                          const addedImage=imageElementRef.current?.files?.[0]||null;
+                         const isEmpity=!addedImage && text.replace(/<(.|\n)*?>/g,"" ).trim().length===0;
+                           if(isEmpity) return;
+                         const body=JSON.stringify(quill.getContents());
+                         submitRef.current?.({body,image:addedImage})
                         }
                     },
                 shift_enter:{
@@ -163,7 +168,7 @@ const[isToolbarVisible,setIsToolbarVisible]=useState(false);
      quill?.insertText(quill?.getSelection()?.length||0,emoji.native);
 
     }
-    const isEmpty=text.replace(/<(.|\n)*?>/g,"" ).trim().length===0;
+    const isEmpty=!image &&text.replace(/<(.|\n)*?>/g,"" ).trim().length===0;
    console.log({isEmpty,text});
     
          return (
@@ -247,14 +252,19 @@ const[isToolbarVisible,setIsToolbarVisible]=useState(false);
                                     <Button
                                         variant="outline"
                                         size="iconSm"
-                                        onClick={() => {}}
+                                        onClick={onCancel}
                                         disabled={disabled}
                                     >
                                         Cancel
                                     </Button>
                                     <Button
                                         size="iconSm"
-                                        onClick={() => {}}
+                                        onClick={()=>{
+                                            onSubmit({
+                                            body:JSON.stringify(quillRef.current?.getContents()),
+                                        image,
+                                        })
+                                    }}
                                         disabled={disabled || isEmpty}
                                         className="bg-[#007a5a] hover:bg-[#007a5a]/80 text-white"
                                     >
@@ -265,7 +275,12 @@ const[isToolbarVisible,setIsToolbarVisible]=useState(false);
         
                             {variant === "create" && (
                                 <Button
-                                    onClick={() => {}}
+                                    onClick={()=>{
+                                        onSubmit({
+                                        body:JSON.stringify(quillRef.current?.getContents()),
+                                         image,
+                                    })
+                                }}
                                     disabled={disabled || isEmpty}
                                     size="sm"
                                     className={cn(

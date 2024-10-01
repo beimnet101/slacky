@@ -16,13 +16,22 @@ import { useRef } from "react";
   )=>{
 
   const editorRef=useRef<Quill|null>(null);
+     const handleSubmit=(
+  {body,
+  image}:{body:string;
+  image:File|null;
+
+ })=>{ console.log({body,image});
+
+ };
+
  return(
     <div className="px-5 w-full ">
     <Editor
     
     placeholder={placeholder}
     variant="create"
-    onSubmit={()=>{}}
+    onSubmit={handleSubmit}
     
     disabled={false}
     innerRef={editorRef}
