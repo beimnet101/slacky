@@ -1,17 +1,10 @@
+
 import { api } from "../../../../convex/_generated/api";
 import { useMutation } from "convex/react";
 import { useCallback, useMemo } from "react";
-import { Id } from "../../../../convex/_generated/dataModel";
+
 import { useState } from "react";
-type RequestType = {
-  body: string,
-  workspaceId:Id<"workspaces">,
-  image?:Id<"_storage">,
-  channelId?:Id<"channels">,
-  parentMessageId?:Id<"messages">,
-  conversationId?:Id<"conversations">
-}
-type ResponseType = Id<"messages"> | null;
+type ResponseType=string|null;
 type Options = {
   onSuccess?: (data: ResponseType) => void;
   onError?: (error: Error) => void;
@@ -22,7 +15,7 @@ type Options = {
 };
 
 
-export const useCreateMessage = () => {
+export const useGenerateUploadUrl = () => {
   const [error, setError] = useState<Error | null>(null);
 
   const [status, setStatus] = useState<"success" | "error" | "settled" | "pending" | null>(null);
@@ -32,18 +25,18 @@ export const useCreateMessage = () => {
 
   //const[isSettled,setIsSettled] = useState(false);
   //const[isError,setIsError] = useState(false);
-  const mutation = useMutation(api.messages.create);
+  const mutation = useMutation(api.upload.generateUploadUrl);
   const isPending = useMemo(() => status === "pending", [status]);
   const isSuccess = useMemo(() => status === "success", [status]);
   const isError = useMemo(() => status === "error", [status]);
   const isSettled = useMemo(() => status === "settled", [status]);
-  const mutate = useCallback(async (values: RequestType, options?: Options) => {
+  const mutate = useCallback(async (_values: {} ,options?: Options) => {
     try {
       setData(null);
       setError(null);
       setStatus("pending");
 
-      const response = await mutation(values);
+      const response = await mutation();
 
       // Call onSuccess callback if provided in options
       options?.onSuccess?.(response);
@@ -67,4 +60,3 @@ export const useCreateMessage = () => {
 
   return { mutate, data, error, isPending, isError, isSuccess, isSettled };
 };
-
