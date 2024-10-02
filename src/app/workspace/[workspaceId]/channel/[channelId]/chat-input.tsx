@@ -1,7 +1,9 @@
 import Quill from "quill";
 import dynamic from "next/dynamic";
 import { useRef } from "react";
-  const Editor=dynamic(()=>import("@/components/editor"),{ssr:false});
+import{useCreateMessage} from"@/features/messages/api/use-create-message";
+
+const Editor=dynamic(()=>import("@/components/editor"),{ssr:false});
 
 
  interface ChatInputProps{
@@ -14,7 +16,8 @@ import { useRef } from "react";
     placeholder}:ChatInputProps
 
   )=>{
-
+   const Work
+const{mutate:createMessage}=useCreateMessage();
   const editorRef=useRef<Quill|null>(null);
      const handleSubmit=(
   {body,
