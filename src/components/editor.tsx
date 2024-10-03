@@ -165,7 +165,7 @@ const Editor = ({
 
     const onEmojiSelect = (emoji: any) => {
         const quill = quillRef.current;
-        quill?.insertText(quill?.getSelection()?.length || 0, emoji.native);
+        quill?.insertText(quill?.getSelection()?.index || 0, emoji.native);
 
     }
     const isEmpty = !image && text.replace(/<(.|\n)*?>/g, "").trim().length === 0;
@@ -182,10 +182,10 @@ const Editor = ({
                 className="hidden"
             />
             <div>
-        <div className={cn("flex flex-col border border-slate-200 rounded-md overflow-hidden focus-within:border-slate-300 focus-within:shadow-sm transition bg-white pb-0",
-                         disabled && "opacity-50")}>
-                
-                    <div ref={containerRef} className="h-full q-custom"/>
+                <div className={cn("flex flex-col border border-slate-200 rounded-md overflow-hidden focus-within:border-slate-300 focus-within:shadow-sm transition bg-white pb-0",
+                    disabled && "opacity-50")}>
+
+                    <div ref={containerRef} className="h-full q-custom" />
 
                     {!!image && (
                         <div className="p-2">
