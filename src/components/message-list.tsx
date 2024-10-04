@@ -103,7 +103,7 @@ export const MessageList = ({
                                 image={message.image}
                                 updatedAt={message.updatedAt}
                                 createdAt={message._creationTime}
-                                isEditing={false}
+                                isEditing={editingId===message._id}
                                 setEditingId={setEditingId}
                                 isCompact={isCompact}
                                 hideThreadButton={variant==="thread"}

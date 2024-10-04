@@ -251,17 +251,18 @@ const Editor = ({
                         )}
 
                         {variant === "update" && (
-                            <div className="ml-auto flex-center gap-x-2">
+                            <div className="ml-auto flex items-center gap-x-2">
                                 <Button
                                     variant="outline"
-                                    size="iconSm"
+                                    size="sm"
                                     onClick={onCancel}
                                     disabled={disabled}
+
                                 >
                                     Cancel
                                 </Button>
                                 <Button
-                                    size="iconSm"
+                                    size="sm"
                                     onClick={() => {
                                         onSubmit({
                                             body: JSON.stringify(quillRef.current?.getContents()),
@@ -269,7 +270,7 @@ const Editor = ({
                                         })
                                     }}
                                     disabled={disabled || isEmpty}
-                                    className="bg-[#007a5a] hover:bg-[#007a5a]/80 text-white"
+                                    className="bg-[#007a5a] hover:bg-[#007a5a]/80 text-white flex-shrink-0"
                                 >
                                     Save
                                 </Button>
