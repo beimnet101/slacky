@@ -16,6 +16,8 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useConfirm } from "@/hooks/use-confirm";
 import React from "react";
+import { useToggleReaction } from "@/features/reactions/api/use-toggle-reactions";
+import { Reactions } from "./reactions";
 interface MessageProps {
     id: Id<"messages">;
     memberId: Id<"members">;
@@ -75,11 +77,27 @@ export const Message = (
 
     const { mutate: updateMessage, isPending: isUpdatingMessage } = useUpdateMessage();
     const { mutate: removeMessage, isPending: isRemovingMessage } = useRemoveMessage();
+   const {mutate:toggleReaction,isPending:isTogglingReaction}=useToggleReaction();
     const isPending = isUpdatingMessage;
 
     const [ConfirmDialog, confirm] = useConfirm("Delete Message",
         "Are you sure you want to delete this message? This can not be undone"
     );
+
+    const handleReactions=(value:string)=>{
+      toggleReaction({messageId:id,value},
+   { 
+    onError:()=>{
+        toast.error("failed to toggle reaction");
+    }
+
+   }
+
+
+      )
+
+
+    }
 
     const handleRemove = async () => {
         const ok = await confirm();
@@ -151,6 +169,7 @@ export const Message = (
                                     <span className="text-xs text-muted-foreground">
                                         (edited)
                                     </span>) : null}
+                                <Reactions data={reactions} onChange={handleReactions}/>
                             </div>
                         )}
                     </div>
@@ -162,7 +181,7 @@ export const Message = (
                             handleEdit={() => setEditingId(id)}
                             handleThread={() => { }}
                             handleDelete={handleRemove}
-                            handleReaction={() => { }}
+                            handleReaction={handleReactions}
                             hideThreadButton={hideThreadButton}
 
 
@@ -221,6 +240,7 @@ export const Message = (
                                 {updatedAt ? (
                                     <span className="text-xs text-muted-foreground">(edited)</span>
                                 ) : null}
+                                <Reactions data={reactions} onChange={handleReactions}/>
                             </div>
                         )}
                 </div>
@@ -231,7 +251,7 @@ export const Message = (
                         handleEdit={() => setEditingId(id)}
                         handleThread={() => { }}
                         handleDelete={handleRemove}
-                        handleReaction={() => { }}
+                        handleReaction={handleReactions}
                         hideThreadButton={hideThreadButton}
 
 
