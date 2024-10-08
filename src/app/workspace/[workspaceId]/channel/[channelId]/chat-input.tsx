@@ -30,16 +30,18 @@ export const ChatInput = ({
 
   const [isPending, setIsPendng] = useState(false);
   const [editorKey, setEditorKey] = useState(0);
+
   const editorRef = useRef<Quill | null>(null);
 
 
 
   const workspaceId = useWorkspaceId();
   const channelId = useChannelId();
+  
   const { mutate: generateUploadurl } = useGenerateUploadUrl();
-
-
   const { mutate: createMessage } = useCreateMessage();
+
+
   const handleSubmit = async (
     { body,
       image }: {

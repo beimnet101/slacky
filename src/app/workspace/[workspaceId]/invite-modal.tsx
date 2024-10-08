@@ -88,7 +88,7 @@ joinCode,
       <DialogContent className="bg-white">
         <DialogHeader>
             <DialogTitle>
-                Invite peopele to your {name}
+                Invite people to your {name}
             </DialogTitle>
 
             <DialogDescription>

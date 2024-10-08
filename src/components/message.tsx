@@ -18,6 +18,7 @@ import { useConfirm } from "@/hooks/use-confirm";
 import React from "react";
 import { useToggleReaction } from "@/features/reactions/api/use-toggle-reactions";
 import { Reactions } from "./reactions";
+import { usePanel } from "@/hooks/use-panel";
 interface MessageProps {
     id: Id<"messages">;
     memberId: Id<"members">;
@@ -74,27 +75,29 @@ export const Message = (
     }: MessageProps
 
 ) => {
+    const { parentMessageId, onOpenMessage, onClose } = usePanel();
+  
 
     const { mutate: updateMessage, isPending: isUpdatingMessage } = useUpdateMessage();
     const { mutate: removeMessage, isPending: isRemovingMessage } = useRemoveMessage();
-   const {mutate:toggleReaction,isPending:isTogglingReaction}=useToggleReaction();
+    const { mutate: toggleReaction, isPending: isTogglingReaction } = useToggleReaction();
     const isPending = isUpdatingMessage;
 
     const [ConfirmDialog, confirm] = useConfirm("Delete Message",
         "Are you sure you want to delete this message? This can not be undone"
     );
 
-    const handleReactions=(value:string)=>{
-      toggleReaction({messageId:id,value},
-   { 
-    onError:()=>{
-        toast.error("failed to toggle reaction");
-    }
+    const handleReactions = (value: string) => {
+        toggleReaction({ messageId: id, value },
+            {
+                onError: () => {
+                    toast.error("failed to toggle reaction");
+                }
 
-   }
+            }
 
 
-      )
+        )
 
 
     }
@@ -104,7 +107,11 @@ export const Message = (
         if (!ok) return;
         removeMessage({ id }), {
             onSucces: () => {
-                toast.success("Message deleted")
+                toast.success("Message deleted");
+                if (parentMessageId === id) {
+
+                    onClose();
+                }
             },
             onError: () => {
                 toast.error("Failed to delete message")
@@ -169,7 +176,7 @@ export const Message = (
                                     <span className="text-xs text-muted-foreground">
                                         (edited)
                                     </span>) : null}
-                                <Reactions data={reactions} onChange={handleReactions}/>
+                                <Reactions data={reactions} onChange={handleReactions} />
                             </div>
                         )}
                     </div>
@@ -179,7 +186,7 @@ export const Message = (
                             isAuthor={isAuthor}
                             isPending={false}
                             handleEdit={() => setEditingId(id)}
-                            handleThread={() => { }}
+                            handleThread={() => onOpenMessage(id)}
                             handleDelete={handleRemove}
                             handleReaction={handleReactions}
                             hideThreadButton={hideThreadButton}
@@ -240,7 +247,7 @@ export const Message = (
                                 {updatedAt ? (
                                     <span className="text-xs text-muted-foreground">(edited)</span>
                                 ) : null}
-                                <Reactions data={reactions} onChange={handleReactions}/>
+                                <Reactions data={reactions} onChange={handleReactions} />
                             </div>
                         )}
                 </div>
@@ -249,7 +256,7 @@ export const Message = (
                         isAuthor={isAuthor}
                         isPending={false}
                         handleEdit={() => setEditingId(id)}
-                        handleThread={() => { }}
+                        handleThread={() => onOpenMessage(id)}
                         handleDelete={handleRemove}
                         handleReaction={handleReactions}
                         hideThreadButton={hideThreadButton}
