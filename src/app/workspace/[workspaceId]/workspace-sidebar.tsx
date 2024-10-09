@@ -11,17 +11,18 @@ import { useGetMembers } from "@/features/members/api/use-get-members";
 import { UserItem } from "./user-item";
 import { useCreateChannelModal } from "@/features/channels/store/use-create-channel-modal";
 import { useChannelId } from "@/hooks/use-channel-id";
+import { useMemberId } from "@/hooks/use-member-id";
 
 
 export const WorkspaceSidebar = () => {
-    const channelId =useChannelId();
+    const channelId = useChannelId();
     const workspaceId = useWorkspaceId();
     const { data: member, isLoading: memberLoading } = useCurrentMember({ workspaceId });
     const { data: workspace, isLoading: workspaceLoading } = useGetWorkSpace({ id: workspaceId });
-    const  { data:channels , isLoading:channelsLoading }=useGetChannels({workspaceId});
-    const { data:members,isLoading:membersLoading }=useGetMembers({workspaceId});
-    const [_open,setOpen]=useCreateChannelModal();
-     
+    const { data: channels, isLoading: channelsLoading } = useGetChannels({ workspaceId });
+    const { data: members, isLoading: membersLoading } = useGetMembers({ workspaceId });
+    const [_open, setOpen] = useCreateChannelModal();
+    const memberId = useMemberId();
     // Show loading spinner while data is being fetched
     if (workspaceLoading || memberLoading) {
         return (
@@ -43,65 +44,66 @@ export const WorkspaceSidebar = () => {
         );
     }
 
- return(
-    <div className="flex flex-col bg-[#5E2C5F] h-full ">
-        <WorkspaceHeader workspace={workspace} isAdmin={member.role==="admin"} />
-        <div className="flex flex-col px-2 mt-3">
-            <SidebarItem
-              label="Treads"
-             icon={MessageSquareText}
-             id="threads"
-            />
-             <SidebarItem
-              label="Drafts & Sent"
-             icon={SendHorizonal}
-             id="drafts"
-            />
-      </div>
+    return (
+        <div className="flex flex-col bg-[#5E2C5F] h-full ">
+            <WorkspaceHeader workspace={workspace} isAdmin={member.role === "admin"} />
+            <div className="flex flex-col px-2 mt-3">
+                <SidebarItem
+                    label="Treads"
+                    icon={MessageSquareText}
+                    id="threads"
+                />
+                <SidebarItem
+                    label="Drafts & Sent"
+                    icon={SendHorizonal}
+                    id="drafts"
+                />
+            </div>
             <WorkspaceSection
-              label="Channels"
-              hint="New channel"
-              onNew={
-                member.role==="admin" ?
-                ()=>
-                    setOpen(true):undefined}
-            >
-               
-                {channels?.map((item)=>(
-               <SidebarItem
-                 key={item._id}
-                icon={HashIcon}
-                label={item.name}
-                id={item._id}
-            variant={channelId===item._id ? "active":"default"}
-               />
-
-           ))}
-           
-              </WorkspaceSection>
-              <WorkspaceSection
-              label="Direct Messages"
-              hint="New direct message"
-              onNew={()=>{}}
+                label="Channels"
+                hint="New channel"
+                onNew={
+                    member.role === "admin" ?
+                        () =>
+                            setOpen(true) : undefined}
             >
 
+                {channels?.map((item) => (
+                    <SidebarItem
+                        key={item._id}
+                        icon={HashIcon}
+                        label={item.name}
+                        id={item._id}
+                        variant={channelId === item._id ? "active" : "default"}
+                    />
 
-              {members?.map((item)=>{
+                ))}
 
-                return(
-                  <UserItem 
-                   key={item._id}
-                   id={item._id}
-                   label={item.user.name}
-                   image={item.user.image}
-                  />
-                )
-              })}
-       </WorkspaceSection>
-        
-    </div>
+            </WorkspaceSection>
+            <WorkspaceSection
+                label="Direct Messages"
+                hint="New direct message"
+                onNew={() => { }}
+            >
 
- );
+
+                {members?.map((item) => {
+
+                    return (
+                        <UserItem
+                            key={item._id}
+                            id={item._id}
+                            label={item.user.name}
+                            image={item.user.image}
+                            variant={item._id === memberId ? "active" : "default"}
+                        />
+                    )
+                })}
+            </WorkspaceSection>
+
+        </div>
+
+    );
 
     // If everything is loaded correctly, render workspace and member info
 }
