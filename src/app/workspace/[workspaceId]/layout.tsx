@@ -15,16 +15,17 @@ import { usePanel } from "@/hooks/use-panel";
 import React from "react";
 import { Loader } from "lucide-react";
 import { Id } from "../../../../convex/_generated/dataModel";
-import { useChannelId } from "@/hooks/use-channel-id";
+
 import { Thread } from "@/features/messages/components/thread";
+import { Profile } from "@/features/members/components/profile";
 interface workspaceIdLayoutProps {
     children: React.ReactNode;
 
 };
 
 const workspaceIdLayout = ({ children }: workspaceIdLayoutProps) => {
-    const { parentMessageId, onClose } = usePanel();
-    const showPanel = !!parentMessageId;
+    const { parentMessageId, profileMemberId, onClose } = usePanel();
+    const showPanel = !!parentMessageId || !!profileMemberId;
 
 
     return (
@@ -64,13 +65,20 @@ const workspaceIdLayout = ({ children }: workspaceIdLayoutProps) => {
                                         onClose={onClose}
 
                                     />
-                                ) : (
+                                ) : profileMemberId ? (
+                                    <Profile
+                                        memberId={profileMemberId}
+                                        onClose={onClose}
+                                    />
+                                ) :
 
-                                    <div className="flex h-full items-center justify-center">
-                                        <Loader className="size-5 animate-spin text-muted-foreground" />
-                                    </div>
+                                    (
 
-                                )}
+                                        <div className="flex h-full items-center justify-center">
+                                            <Loader className="size-5 animate-spin text-muted-foreground" />
+                                        </div>
+
+                                    )}
 
                             </ResizablePanel>
 

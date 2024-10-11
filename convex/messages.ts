@@ -15,6 +15,7 @@ const populateThread = async (ctx: QueryCtx, messageId: Id<"messages">) => {
             count: 0,
             image: undefined,
             timestamp: 0,
+            name:"",
         };
     }
     const lastMessage = messages[messages.length - 1];
@@ -24,6 +25,7 @@ const populateThread = async (ctx: QueryCtx, messageId: Id<"messages">) => {
             count: 0,
             image: undefined,
             timestamp: 0,
+            name:"",
         }
     };
     const lastMessageUser = await populateUser(ctx, lastMessageMember.userId);
@@ -31,6 +33,7 @@ const populateThread = async (ctx: QueryCtx, messageId: Id<"messages">) => {
         count: messages.length,
         image: lastMessageUser?.image,
         timestamp: lastMessage._creationTime,
+        name:lastMessageUser?.name,
 
     };
 };
@@ -155,7 +158,7 @@ export const getById = query({
         const message = await ctx.db.get(args.id);
         console.log("Fetched Message:", message); // Log the fetched message
         if (!message) {
-        return null;
+            return null;
         }
 
         const currentMember = await getMember(ctx, message.workspaceId, userId);
@@ -241,6 +244,7 @@ export const get = query({
         }
         let _conversationId = args.conversationId;
         if (!args.conversationId && !args.channelId && args.parentMessageId) {
+
             const parentMessage = await ctx.db.get(args.parentMessageId)
             if (!parentMessage) {
                 throw new Error("parent message not found");
@@ -316,6 +320,7 @@ export const get = query({
                             reactions: reactionWithoutMemberIdProperty,
                             threadCount: thread.count,
                             threadImage: thread.image,
+                            threadName: thread.name,
                             threadTimestamp: thread.timestamp,
 
                         };

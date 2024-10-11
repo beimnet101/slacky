@@ -165,7 +165,7 @@ export const Thread = ({
                     </Button>
 
                 </div>
-                <div className="flex h-full items-center justify-center">
+                <div className="flex flex-col gap-y-2 h-full items-center justify-center">
                     <Loader className=" size-5 animate-spin text-muted-foreground" />
 
                 </div>
@@ -188,8 +188,8 @@ export const Thread = ({
                     </Button>
 
                 </div>
-                <div className="flex h-full items-center justify-center">
-                    <AlertTriangle className=" flex flex-col gap-y-2 size-5 text-muted-foreground" />
+                <div className="flex flex-col gap-y-2 h-full items-center justify-center">
+                    <AlertTriangle className="  size-5 text-muted-foreground" />
                     <p className="text-sm text-muted-foreground"> Message not found</p>
                 </div>
 
@@ -259,6 +259,7 @@ export const Thread = ({
                                     hideThreadButton
                                     threadCount={message.threadCount}
                                     threadImage={message.threadImage}
+                                    threadName={message.threadName}
                                     threadTimestamp={message.threadTimestamp}
                                 />
                             )
