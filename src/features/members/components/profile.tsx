@@ -10,8 +10,18 @@ import { useUpdateMember } from "../api/use-update.member";
 import { useRemoveMember } from "../api/use-remove-member";
 import { useCurrentMember } from "../api/use-current-member";
 import { useWorkspaceId } from "@/hooks/use-workspace-id";
-import  {toast, Toaster} from"sonner";
+import { toast, Toaster } from "sonner";
 import { useConfirm } from "@/hooks/use-confirm";
+import { useRouter } from "next/navigation";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+    DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import { DropdownMenuRadioGroup, DropdownMenuRadioItem } from "@radix-ui/react-dropdown-menu";
+
 interface ProfileProps {
     memberId: Id<"members">
     onClose: () => void;
@@ -21,60 +31,76 @@ interface ProfileProps {
 
 export const Profile = ({ memberId, onClose }: ProfileProps) => {
     const workspaceId = useWorkspaceId();
+    const router = useRouter();
     const { data: currentMember, isLoading: isLoadingCurrentMember } = useCurrentMember({ workspaceId });
 
     const { data: member, isLoading: isLoadingMember } = useGetMember({ id: memberId });
     const { mutate: updateMember, isPending: isUpdatingMember } = useUpdateMember();
     const { mutate: removeMember, isPending: isRemovingMember } = useRemoveMember();
-  
 
-    const[leaveDialog,confirmLeave]=useConfirm("Leave workspace","Are you sure you want to leave this workspace" );
+
+    const [LeaveDialog, confirmLeave] = useConfirm("Leave workspace", "Are you sure you want to leave this workspace");
+
+    const [RemoveDialog, confirmRemove] = useConfirm("Leave workspace", "Are you sure you want to leave this workspace");
+    const [UpdateDialog, confirmUpdate] = useConfirm("Change role", "Are you sure you want to change this member's role");
     const avatarfallback = member?.user.name?.[0] ?? "M";
-  
-    const onRemove=()=>{
-     removeMember({ id: memberId},{
-        onSuccess:()=>{
-            toast.success("Member removed");
-            onClose();
-        }
-        ,
-        onError:()=>{
-            toast.error("failed to remove them :(")
 
-        }
-     })
+    const onRemove = async () => {
+
+        const ok = await confirmRemove();
+        if (!ok) return;
+        removeMember({ id: memberId }, {
+            onSuccess: () => {
+
+                toast.success("Member removed");
+                onClose();
+            }
+            ,
+            onError: () => {
+                toast.error("failed to remove them :(")
+
+            }
+        })
     };
 
 
-    const onLeave=()=>{
-        removeMember({ id: memberId},{
-           onSuccess:()=>{
-               toast.success("You left the workspace");
-               onClose();
-           }
-           ,
-           onError:()=>{
-               toast.error("failed to leave the workspace ")
-   
-           }
-        }) 
-       };
+    const onLeave = async () => {
+        router.replace("/");
+        const ok = await confirmLeave();
+        if (!ok) return;
+        removeMember({ id: memberId }, {
+            onSuccess: () => {
+                router.replace("/");
+                toast.success("You left the workspace");
+                onClose();
+            }
+            ,
+            onError: () => {
+                toast.error("failed to leave the workspace ")
 
-       const onUpdate=(role:"admin"|"member")=>{
-        updateMember({ id: memberId,role},{
-           onSuccess:()=>{
-               toast.success("Role changed");
-               onClose();
-           }
-           ,
-           onError:()=>{
-               toast.error("failed to change role");
-   
-           }
+            }
         })
-       };
+    };
 
-    
+    const onUpdate = async (role: "admin" | "member") => {
+        const ok = await confirmUpdate();
+        if (!ok) return;
+
+        updateMember({ id: memberId, role }, {
+            onSuccess: () => {
+                toast.success("Role changed");
+                onClose();
+            }
+            ,
+            onError: (error) => {
+                console.log({ error })
+                toast.error("failed to change role");
+
+            }
+        })
+    };
+
+
 
 
     if (isLoadingMember || isLoadingCurrentMember) {
@@ -125,79 +151,106 @@ export const Profile = ({ memberId, onClose }: ProfileProps) => {
 
 
     return (
-        <div className="h-full flex flex-col">
+        <>
+            <RemoveDialog />
+            <LeaveDialog />
+            <UpdateDialog />
+            <div className="h-full flex flex-col">
 
-            <div className=" h-[49px] flex justify-between items-center px-4 py-6 border-b">
-                <p className="text-lg font-bold">profile</p>
+                <div className=" h-[49px] flex justify-between items-center px-4 py-6 border-b">
+                    <p className="text-lg font-bold">profile</p>
 
-                <Button onClick={onClose} size="iconSm" variant="ghost">
-                    <XIcon className="size-5 stroke-[1.5]" />
-                </Button>
+                    <Button onClick={onClose} size="iconSm" variant="ghost">
+                        <XIcon className="size-5 stroke-[1.5]" />
+                    </Button>
 
-            </div>
-            <div className="flex flex-col  items-center justify-center p-3">
-                <Avatar className="max-h-[180px] max-w-[180px] size-full">
-                    <AvatarImage src={member.user.image} />
-                    <AvatarFallback className="aspect-square text-4xl">
-                        {avatarfallback}
-                    </AvatarFallback>
+                </div>
+                <div className="flex flex-col  items-center justify-center p-3">
+                    <Avatar className="max-h-[180px] max-w-[180px] size-full">
+                        <AvatarImage src={member.user.image} />
+                        <AvatarFallback className="aspect-square text-4xl">
+                            {avatarfallback}
+                        </AvatarFallback>
 
 
-                </Avatar>
+                    </Avatar>
 
-            </div>
-            <div className="flex flex-col p-4">
-                <p className="text-xl font-bold">{member.user.name}</p>
-                {currentMember?.role === "admin" &&
-                    currentMember?._id !== memberId ? (
-                    <div className="flex items-center gap-2 mt-4">
-                        <Button variant="outline" className="w-full capitalize">
-                            {member.role} <ChevronDownIcon className="size-4 ml-2" />
-                        </Button>
-                        <Button variant="outline" className="w-full">
-                            Remove
-                        </Button>
-                    </div>
+                </div>
+                <div className="flex flex-col p-4">
+                    <p className="text-xl font-bold">{member.user.name}</p>
+                    {currentMember?.role === "admin" &&
+                        currentMember?._id !== memberId ? (
+                        <div className="flex items-center gap-2  mt-4">
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
 
-                )
-                    : currentMember?._id === memberId &&
-                        currentMember?.role !== "admin" ? (
-                        <div>
-                            <Button variant="outline" className="w-full">
-                                Leave
+                                    <Button variant="outline" className="w-full capitalize">
+                                        {member.role} <ChevronDownIcon className="size-4 ml-2" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent className="w-full p-4 cursor-pointer">
+                                    <DropdownMenuRadioGroup
+                                        
+                                        value={member.role}
+                                        onValueChange={(role) => onUpdate(role as "admin" | "member")}>
+                                        <DropdownMenuRadioItem value="admin"
+                                        >
+                                            Admin
+                                        </DropdownMenuRadioItem>
+                                        <DropdownMenuRadioItem value="member"
+                                        >
+                                            Member
+                                        </DropdownMenuRadioItem>
+                                    </DropdownMenuRadioGroup>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+
+                            <Button onClick={onRemove} variant="outline" className="w-full">
+                                Remove
                             </Button>
 
                         </div>
 
                     )
-                        : null}
-            </div>
-            <Separator />
-            <div className="flex flex-col p-4">
-                <p className="text-sm font-bold mb-4">Contact Information</p>
-                <div className="flex items-center gap-2">
-                    <div className="size-9 rounded-md bg-muted flex items-center justify-center">
-                        <MailIcon className="size-4" />
-                    </div>
-                    <div className="flex flex-col">
+                        : currentMember?._id === memberId &&
+                            currentMember?.role !== "admin" ? (
+                            <div>
+                                <Button onClick={onLeave} variant="outline" className="w-full">
+                                    Leave
+                                </Button>
 
-                        <p className="text-[13px] font-semibold text-muted-foreground">
-                            Email Address
-                        </p>
+                            </div>
 
-                        <Link href={`mailto:${member.user.email}`}
-                            className="text-sm hover:underline text-[#1264a3]"
-                        >
-                            {member.user.email}
+                        )
+                            : null}
+                </div>
+                <Separator />
+                <div className="flex flex-col p-4">
+                    <p className="text-sm font-bold mb-4">Contact Information</p>
+                    <div className="flex items-center gap-2">
+                        <div className="size-9 rounded-md bg-muted flex items-center justify-center">
+                            <MailIcon className="size-4" />
+                        </div>
+                        <div className="flex flex-col">
 
-                        </Link>
+                            <p className="text-[13px] font-semibold text-muted-foreground">
+                                Email Address
+                            </p>
+
+                            <Link href={`mailto:${member.user.email}`}
+                                className="text-sm hover:underline text-[#1264a3]"
+                            >
+                                {member.user.email}
+
+                            </Link>
+                        </div>
+
                     </div>
 
                 </div>
 
             </div>
-
-        </div>
+        </>
 
     );
 

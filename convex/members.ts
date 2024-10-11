@@ -190,7 +190,8 @@ export const remove = mutation({
       .withIndex("by_workspace_id_user_id", (q) =>
         q.eq("workspaceId", member.workspaceId).eq("userId", userId),
       ).unique();
-    if (!currentMember || currentMember.role !== "admin") {
+
+    if (!currentMember) {
 
       throw new Error("unauthorized");
     }//to remove member 
