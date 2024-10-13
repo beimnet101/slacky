@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Id } from "../../../../../convex/_generated/dataModel"
 import { useGetMember } from "../api/use-get-member";
-import { AlertTriangle, ChevronDownIcon, MailIcon, XIcon } from "lucide-react";
+import { AlertTriangle, ChevronDownIcon, MailIcon, Verified, XIcon } from "lucide-react";
 import { Loader } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Separator } from "@/components/ui/separator";
@@ -13,6 +13,9 @@ import { useWorkspaceId } from "@/hooks/use-workspace-id";
 import { toast, Toaster } from "sonner";
 import { useConfirm } from "@/hooks/use-confirm";
 import { useRouter } from "next/navigation";
+import VerifiedIcon from '@mui/icons-material/Verified';
+
+
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -96,6 +99,7 @@ export const Profile = ({ memberId, onClose }: ProfileProps) => {
                 console.log({ error })
                 toast.error("failed to change role");
 
+
             }
         })
     };
@@ -177,7 +181,18 @@ export const Profile = ({ memberId, onClose }: ProfileProps) => {
 
                 </div>
                 <div className="flex flex-col p-4">
-                    <p className="text-xl font-bold">{member.user.name}</p>
+
+                    <p className="text-xl font-bold flex items-center">
+                        {member.user.name}
+                        {member.role === "admin" && (
+                            <span className="ml-2 bg-blue-500 rounded-full  flex items-center justify-center">
+                                <Verified className="h-4 w-4 text-white" />
+                            </span>
+                        )}
+                    </p>
+
+
+
                     {currentMember?.role === "admin" &&
                         currentMember?._id !== memberId ? (
                         <div className="flex items-center gap-2  mt-4">
@@ -190,7 +205,7 @@ export const Profile = ({ memberId, onClose }: ProfileProps) => {
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent className="w-full p-4 cursor-pointer">
                                     <DropdownMenuRadioGroup
-                                        
+
                                         value={member.role}
                                         onValueChange={(role) => onUpdate(role as "admin" | "member")}>
                                         <DropdownMenuRadioItem value="admin"
