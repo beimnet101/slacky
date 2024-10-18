@@ -75,7 +75,7 @@ export const SignInCard = ({ setState }: SignInCardProps) => {
       <CardContent className="space-y-5 px-0 pb-0">
         <form onSubmit={onPasswordSignIn} className="space-y-2.5">
           <Input
-            disabled={false}
+            disabled={pending}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Email"
@@ -85,7 +85,7 @@ export const SignInCard = ({ setState }: SignInCardProps) => {
 
           />
           <Input
-            disabled={false}
+            disabled={pending}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Password"
@@ -94,7 +94,7 @@ export const SignInCard = ({ setState }: SignInCardProps) => {
 
 
           />
-          <Button type="submit" className="w-full  " size="lg" disabled={false}>
+          <Button type="submit" className="w-full  " size="lg" disabled={pending}>
             continue
           </Button>
 
@@ -103,7 +103,7 @@ export const SignInCard = ({ setState }: SignInCardProps) => {
         <Separator />
         <div className="flex flex-col gap-y-2.5
         ">
-          <Button disabled={false}
+          <Button disabled={pending}
             onClick={() => onProviderSignIn("google")}
             variant={"outline"}
             size="lg"
@@ -115,7 +115,7 @@ export const SignInCard = ({ setState }: SignInCardProps) => {
             <FcGoogle className="size-5 absolute top-3 left-2.5" />
 
           </Button>
-          <Button disabled={false}
+          <Button disabled={pending}
             onClick={() => onProviderSignIn("github")}
             variant={"outline"}
             size="lg"

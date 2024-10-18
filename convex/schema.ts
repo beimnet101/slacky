@@ -3,6 +3,8 @@ import { v } from "convex/values";
 import { authTables } from "@convex-dev/auth/server";
 const schema = defineSchema({
   ...authTables,
+
+
   workspaces: defineTable(
     {
       name: v.string(),
@@ -12,6 +14,16 @@ const schema = defineSchema({
 
     }
   ),
+
+
+  lastVisits: defineTable(
+    {
+      memberId: v.optional(v.id("members")),      // Reference to the member
+      workspaceId: v.optional(v.id("workspaces")), // Reference to the workspace
+      lastVisited: v.optional(v.number()),        // Timestamp of the last visit in milliseconds
+    }).index("by_member_id_workspace_id", ["memberId", "workspaceId"]),
+
+
   members: defineTable({
     userId: v.id("users"),
     workspaceId: v.id("workspaces"),
@@ -45,6 +57,7 @@ const schema = defineSchema({
     parentMessageId: v.optional(v.id("messages")),
     conversationId: v.optional(v.id("conversations")),
     updatedAt: v.optional(v.number()),
+    
 
   })
     .index("by_workspace_id", ["workspaceId"])

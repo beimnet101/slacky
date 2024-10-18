@@ -185,9 +185,14 @@ export const Profile = ({ memberId, onClose }: ProfileProps) => {
                     <p className="text-xl font-bold flex items-center">
                         {member.user.name}
                         {member.role === "admin" && (
-                            <span className="ml-2 bg-blue-500 rounded-full  flex items-center justify-center">
-                                <Verified className="h-4 w-4 text-white" />
-                            </span>
+                            <>
+
+                                <span className="ml-2 bg-blue-500 rounded-full  flex items-center justify-center">
+                                    <Verified className="h-4 w-4 text-white" />
+                                    
+                                </span>
+                                <span className="text-sm ml-1 text-muted-foreground text-rose-950">admin</span>
+                            </>
                         )}
                     </p>
 

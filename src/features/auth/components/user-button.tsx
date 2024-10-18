@@ -11,10 +11,28 @@ import { Loader, LogOut } from "lucide-react";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useRouter } from "next/navigation";
 
+
 // Define UserButton without React.FC
 export const UserButton = () => {
     const router = useRouter();
+
+
+
     const { signOut } = useAuthActions();
+
+
+
+    const handleLogout = async () => {
+        await signOut(); // Sign out the user
+        router.push("/auth"); // Redirect to the authentication page after logout
+
+
+    };
+
+
+
+
+
     const { data, isLoading } = useCurrentUser();
     if (isLoading) {
 
@@ -39,7 +57,7 @@ export const UserButton = () => {
                 </Avatar>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="center" side="right" className="w-60">
-                <DropdownMenuItem onClick={signOut} className="h-10">
+                <DropdownMenuItem onClick={handleLogout} className="h-10">
                     {/* Add any dropdown items here */}
                     <LogOut className="size-4 mr-2" />log out
                 </DropdownMenuItem>

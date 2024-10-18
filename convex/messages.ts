@@ -388,3 +388,64 @@ export const create = mutation({
     },
 
 })
+
+
+export const countMessagesInMemberConversations = query({
+    args: {
+        workspaceId: v.optional(v.id("workspaces")), // Validate that this is a workspace ID
+        memberId: v.optional(v.id("members")), // Validate that this is a member ID
+    },
+    handler: async (ctx, { workspaceId, memberId }) => {
+        const userId = await auth.getUserId(ctx); // Check if the user is authenticated
+        if (!userId) {
+            throw new Error("Unauthorized");
+        }
+
+        // Fetch the last visit timestamp for the member in the specified workspace
+        const lastVisit = await ctx.db
+            .query("lastVisits")
+            .filter(q => q.eq(q.field("memberId"), memberId))
+            .filter(q => q.eq(q.field("workspaceId"), workspaceId))
+            .collect();
+
+        // Set default value for lastVisitedTimestamp
+        const lastVisitedTimestamp = lastVisit.length > 0 ? lastVisit[0].lastVisited : 0; // Default to 0 if not found
+
+        // Fetch conversations in the specified workspace where the specified member is a participant
+        const conversations = await ctx.db
+            .query("conversations")
+            .filter(q => q.eq(q.field("workspaceId"), workspaceId))
+            .filter(q =>
+                q.or(
+                    q.eq(q.field("memberOneId"), memberId),
+                    q.eq(q.field("memberTwoId"), memberId)
+                )
+            )
+            .collect(); // Collect the conversations that match the criteria
+
+        // Extract the IDs of all the conversations
+        const conversationIds = conversations.map(conv => conv._id);
+
+        // Initialize message count
+        let messageCount = 0;
+
+        // If there are conversations, fetch the new messages in those conversations
+        if (conversationIds.length > 0) {
+            const messages = await ctx.db
+                .query("messages")
+                .filter(q =>
+                    q.or(
+                        ...conversationIds.map(convoId => q.eq(q.field("conversationId"), convoId))
+                    )
+                )
+                .filter(q => q.gt(q.field("_creationTime"), lastVisitedTimestamp as number)) // Only new messages
+                .collect(); // Collect new messages
+
+            // Count messages belonging to these conversations excluding those sent by the specified member
+            messageCount = messages.filter(msg => msg.memberId === memberId).length;
+             // Total new messages excluding the member's messages
+        }
+
+        return messageCount; // Return the total count of new messages
+    },
+});
