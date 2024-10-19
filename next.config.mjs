@@ -10,6 +10,13 @@ const nextConfig = {
       // your project has TypeScript errors.
       ignoreBuildErrors: true,
     },
+    env: {
+        // Ensure these environment variables are set in your production environment
+        NEXT_PUBLIC_CONVEX_URL: process.env.NEXT_PUBLIC_CONVEX_URL,
+        AUTH_GITHUB_ID: process.env.AUTH_GITHUB_ID,
+        AUTH_GITHUB_SECRET: process.env.AUTH_GITHUB_SECRET,
+        SITE_URL: process.env.SITE_URL,
+      },
   };
   
   export default nextConfig;
