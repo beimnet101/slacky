@@ -163,9 +163,12 @@ const Editor = ({
 
 
 
-    const onEmojiSelect = (emojiValue:string) => {
+    const onEmojiSelect = (emojiValue: string) => {
         const quill = quillRef.current;
-        quill?.insertText(quill?.getSelection()?.index || 0, emojiValue);
+        const length = quill?.getLength() || 0;
+
+        // Insert the emoji at the end of the text (just before the end marker)
+        quill?.insertText(length - 1, emojiValue);
 
     }
     const isEmpty = !image && text.replace(/<(.|\n)*?>/g, "").trim().length === 0;
