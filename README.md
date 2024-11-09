@@ -1,10 +1,8 @@
 Workwaves
 Welcome to Workwaves, a real-time, workspace-oriented chat system designed to simplify team communication and collaboration, much like Slack. With Workwaves, teams can seamlessly interact across channels, exchange direct messages, and collaborate efficiently in a modern, intuitive interface.
 
-Features![Screenshot (43)](https://github.com/user-attachments/assets/a9e2ee0d-cf1f-4ff0-9560-86a7428c8154)
-
-Channels and Direct M![Screenshot (44)](https://github.com/user-attachments/assets/9980025a-294b-441a-bdcc-61e3ae5a3c98)
-essaging: Organize communication into channels and direct message threads for easy collaboration.
+Channels and Direct
+Messaging: Organize communication into channels and direct message threads for easy collaboration.
 Real-Time Messaging: Instant updates and real-time notifications across all devices.
 Draft Saving: Save message drafts for later use within channels and direct messages.
 Role-Based Access: Role management within workspaces for secure access to channels and settings.
@@ -45,9 +43,10 @@ Usage![Screenshot (44) - Copy](https://github.com/user-attachments/assets/b87570
 Creating Workspaces: Sign up and create a workspace to start your team on Workwaves.
 Channels and Conversations: Use channels for team discussions, and direct messages for one-on-one interactions.
 Saving Drafts: You can save draft messages in both channels and direct messages for future edits or sending.
-Image Uploads: Add im![Screenshot (45) - Copy](https://github.com/user-attachments/assets/3fc4898f-33c0-4867-bd87-0d674045e8a6)
-ages to conversations using the image upload feature.
+Image Uploads: Add ages to conversations using the image upload feature.
+Message Status: View read receipts to confirm message delivery and reading status.ages to conversations using the image upload feature.
 Message Status: View read receipts to confirm message delivery and reading status.
+![Screenshot (45) - Copy](https://github.com/user-attachments/assets/3fc4898f-33c0-4867-bd87-0d674045e8a6)
 ![Screenshot (43) - Copy](https://github.com/user-attachments/assets/64338dca-be99-41f8-ae77-b5a53deac755)
 ![Screenshot (42)](https://github.com/user-attachments/assets/4bfb4e9a-19af-43a3-b56a-32b9cbc39546)
 ![Screenshot (42) - Copy](https://github.com/user-attachments/assets/553a0248-39af-479f-8c69-98c6843d69ec)
