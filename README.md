@@ -43,5 +43,6 @@ Creating Workspaces: Sign up and create a workspace to start your team on Workwa
 Channels and Conversations: Use channels for team discussions, and direct messages for one-on-one interactions.
 Saving Drafts: You can save draft messages in both channels and direct messages for future edits or sending.
 Image Uploads: Add images to conversations using the image upload feature.
-Message Status: View read receipts to confirm message delivery and reading status.
+Message Status: View read receipts to confirm message delivery and reading status.![Screenshot (52)](https://github.com/user-attachments/assets/f2d5032e-b820-4ecb-9591-86a94d17d11a)
+
 
