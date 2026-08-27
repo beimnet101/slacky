@@ -78,11 +78,18 @@ const schema = defineSchema({
   })
     .index("by_workspace_id", ["workspaceId"])
     .index("by_message_id", ["messageId"])
-    .index("by_member_id", ["memberId"])
+    .index("by_member_id", ["memberId"]),
 
-
-
-
+  canvases: defineTable({
+    workspaceId: v.id("workspaces"),
+    memberId: v.id("members"),
+    title: v.string(),
+    content: v.string(),
+    templateId: v.optional(v.string()),
+    isStarred: v.optional(v.boolean()),
+  })
+    .index("by_workspace_id", ["workspaceId"])
+    .index("by_member_id", ["memberId"]),
 });
 
 

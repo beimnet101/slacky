@@ -1,7 +1,7 @@
 import { UserButton } from "@/features/auth/components/user-button";
 import { WorkspaceSwitcher } from "./workspaceSwitcher";
 import { SidebarButton } from "./sidebar-button";
-import { Bell, BellIcon, Home, HomeIcon, MessageSquare, MoreHorizontal } from "lucide-react";
+import { Bell, BellIcon, Files, Home, HomeIcon, MessageSquare, MoreHorizontal } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useMessageCount } from "@/features/conversations/api/use-get-conversation-count";
 import { useMemberId } from "@/hooks/use-member-id";
@@ -37,6 +37,7 @@ export const Sidebar = () => {
             <SidebarButton icon={Home} label="home" isActive={pathname.includes("/workspace")} onClick={() => router.push('/')} />
             <SidebarButton icon={MessageSquare} newMessages={data} label="DMs" isActive={pathname.includes("/dms")} onClick={() => router.push(`/workspace/${workspaceId}/dms`)} />
             <SidebarButton icon={Bell} label="activity" isActive={pathname.includes("/activity")} onClick={() => router.push(`/workspace/${workspaceId}/activity`)} />
+            <SidebarButton icon={Files} label="files" isActive={pathname.includes("/files")} onClick={() => router.push(`/workspace/${workspaceId}/files`)} />
             <SidebarButton icon={MoreHorizontal} label="more"  onClick={handleOpenModal }/>
             <div className="flex flex-col items-center justify-center gap-y-1 mt-auto" >
 
