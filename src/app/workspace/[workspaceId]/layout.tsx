@@ -18,6 +18,8 @@ import { Id } from "../../../../convex/_generated/dataModel";
 
 import { Thread } from "@/features/messages/components/thread";
 import { Profile } from "@/features/members/components/profile";
+import { CallManager } from "@/components/call-manager";
+import { useWorkspaceId } from "@/hooks/use-workspace-id";
 interface workspaceIdLayoutProps {
     children: React.ReactNode;
 
@@ -25,12 +27,13 @@ interface workspaceIdLayoutProps {
 
 const workspaceIdLayout = ({ children }: workspaceIdLayoutProps) => {
     const { parentMessageId, profileMemberId, onClose } = usePanel();
+    const workspaceId = useWorkspaceId();
     const showPanel = !!parentMessageId || !!profileMemberId;
 
 
     return (
         <div className="h-full ">
-
+            <CallManager workspaceId={workspaceId} />
             <Toolbar />
             <div className=" flex h-[calc(100vh-40px)]">
                 <Sidebar />

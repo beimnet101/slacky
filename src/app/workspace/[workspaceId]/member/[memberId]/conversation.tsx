@@ -1,4 +1,6 @@
+"use client";
 import { useMemberId } from "@/hooks/use-member-id";
+import { useWorkspaceId } from "@/hooks/use-workspace-id";
 import { Id } from "../../../../../../convex/_generated/dataModel";
 import { useGetMember } from "@/features/members/api/use-get-member";
 import { useGetMessages } from "@/features/messages/api/use-get-messages";
@@ -7,46 +9,66 @@ import { Header } from "./header";
 import { ChatInput } from "./chat-input";
 import { MessageList } from "@/components/message-list";
 import { usePanel } from "@/hooks/use-panel";
+import { useMutation } from "convex/react";
+import { api } from "../../../../../../convex/_generated/api";
+import { useCurrentMember } from "@/features/members/api/use-current-member";
+
 interface ConversationProps {
     id: Id<"conversations">;
-
 }
 
-
-export const Conversation = (
-
-    {
-        id
-    }: ConversationProps
-) => {
-
-    const{onOpenProfile}=usePanel();
+export const Conversation = ({ id }: ConversationProps) => {
+    const { onOpenProfile } = usePanel();
     const memberId = useMemberId();
+    const workspaceId = useWorkspaceId();
     const { data: member, isLoading: memberLoading } = useGetMember({ id: memberId });
-    const { results, status, loadMore } = useGetMessages({
-        conversationId: id,
-    });
+    const { data: currentMember } = useCurrentMember({ workspaceId });
+    const { results, status, loadMore } = useGetMessages({ conversationId: id });
+    const initiateMutation = useMutation(api.calls.initiate);
+
+    const handleVideoCall = async () => {
+        if (!currentMember || !member) return;
+        try {
+            const pc = new RTCPeerConnection({
+                iceServers: [
+                    { urls: "stun:stun.l.google.com:19302" },
+                    { urls: "stun:stun1.l.google.com:19302" },
+                ],
+            });
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+            pc.close();
+            stream.getTracks().forEach((t) => t.stop());
+
+            await initiateMutation({
+                workspaceId,
+                receiverId: memberId,
+                offer: JSON.stringify(offer),
+            });
+        } catch (err) {
+            console.error("Failed to initiate call:", err);
+        }
+    };
 
     if (memberLoading || status === "LoadingFirstPage") {
         return (
-            <div className="h-full flex items-center justify-center ">
+            <div className="h-full flex items-center justify-center">
                 <Loader className="size-6 animate-spin text-muted-foreground" />
-
             </div>
         );
-
     }
+
     return (
         <div className="flex flex-col h-full">
             <Header
                 memberName={member?.user.name}
                 memberImage={member?.user.image}
                 onClick={() => onOpenProfile(memberId)}
-
-
+                onVideoCall={handleVideoCall}
             />
             <MessageList
-
                 data={results}
                 variant="conversation"
                 memberImage={member?.user.image}
@@ -55,15 +77,10 @@ export const Conversation = (
                 isLoadingMore={status === "LoadingMore"}
                 canLoadMore={status === "CanLoadMore"}
             />
-            
             <ChatInput
                 placeholder={`Message ${member?.user?.name}`}
                 conversationId={id}
             />
-
         </div>
     );
-
-
-
-}
+};

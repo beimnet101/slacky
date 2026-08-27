@@ -90,6 +90,32 @@ const schema = defineSchema({
   })
     .index("by_workspace_id", ["workspaceId"])
     .index("by_member_id", ["memberId"]),
+
+  mentions: defineTable({
+    workspaceId: v.id("workspaces"),
+    messageId: v.id("messages"),
+    mentionedMemberId: v.id("members"),
+    mentionerMemberId: v.id("members"),
+    channelId: v.optional(v.id("channels")),
+    conversationId: v.optional(v.id("conversations")),
+    isRead: v.boolean(),
+  })
+    .index("by_mentioned_member", ["mentionedMemberId"])
+    .index("by_workspace_id_mentioned", ["workspaceId", "mentionedMemberId"]),
+
+  calls: defineTable({
+    workspaceId: v.id("workspaces"),
+    callerId: v.id("members"),
+    receiverId: v.id("members"),
+    status: v.union(v.literal("ringing"), v.literal("active"), v.literal("ended"), v.literal("declined")),
+    offer: v.optional(v.string()),
+    answer: v.optional(v.string()),
+    callerCandidates: v.optional(v.array(v.string())),
+    receiverCandidates: v.optional(v.array(v.string())),
+  })
+    .index("by_receiver", ["receiverId"])
+    .index("by_caller", ["callerId"])
+    .index("by_workspace_id", ["workspaceId"]),
 });
 
 

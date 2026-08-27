@@ -384,6 +384,46 @@ export const create = mutation({
             channelId: args.channelId,
             parentMessageId: args.parentMessageId,
         });
+
+        // Parse @mentions from message body (Quill delta JSON)
+        const parseMentions = (body: string) => {
+            try {
+                const delta = JSON.parse(body);
+                if (delta?.ops) {
+                    return delta.ops
+                        .map((op: any) => (typeof op.insert === "string" ? op.insert : ""))
+                        .join("");
+                }
+            } catch {}
+            return body;
+        };
+
+        const plainText = parseMentions(args.body);
+        if (plainText.includes("@")) {
+            const allMembers = await ctx.db.query("members")
+                .withIndex("by_workspace_id", (q) => q.eq("workspaceId", args.workspaceId))
+                .collect();
+
+            for (const targetMember of allMembers) {
+                if (targetMember._id === member._id) continue; // skip self
+                const user = await ctx.db.get(targetMember.userId);
+                if (!user?.name) continue;
+                const firstName = user.name.split(" ")[0];
+                if (plainText.toLowerCase().includes(`@${firstName.toLowerCase()}`) ||
+                    plainText.toLowerCase().includes(`@${user.name.toLowerCase()}`)) {
+                    await ctx.db.insert("mentions", {
+                        workspaceId: args.workspaceId,
+                        messageId,
+                        mentionedMemberId: targetMember._id,
+                        mentionerMemberId: member._id,
+                        channelId: args.channelId,
+                        conversationId: _conversationId,
+                        isRead: false,
+                    });
+                }
+            }
+        }
+
         return messageId
     },
 

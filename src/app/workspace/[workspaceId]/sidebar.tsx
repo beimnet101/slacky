@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useMessageCount } from "@/features/conversations/api/use-get-conversation-count";
 import { useMemberId } from "@/hooks/use-member-id";
 import { useWorkspaceId } from "@/hooks/use-workspace-id";
+import { useGetMentionCount } from "@/features/mentions/api/use-get-mention-count";
 
 import { useRouter } from "next/navigation";
 import { EditProfileModal } from "@/features/members/components/editProfile";
@@ -22,6 +23,7 @@ export const Sidebar = () => {
     const memberId = useMemberId();
     const data = useMessageCount({ workspaceId, memberId });
     const newMessagecount = data;
+    const mentionCount = useGetMentionCount({ workspaceId });
 
 
     const [open, setOpen] = useEditProfileModal(); // Use the atom to manage modal state
@@ -36,7 +38,7 @@ export const Sidebar = () => {
             <WorkspaceSwitcher />
             <SidebarButton icon={Home} label="home" isActive={pathname.includes("/workspace")} onClick={() => router.push('/')} />
             <SidebarButton icon={MessageSquare} newMessages={data} label="DMs" isActive={pathname.includes("/dms")} onClick={() => router.push(`/workspace/${workspaceId}/dms`)} />
-            <SidebarButton icon={Bell} label="activity" isActive={pathname.includes("/activity")} onClick={() => router.push(`/workspace/${workspaceId}/activity`)} />
+            <SidebarButton icon={Bell} label="activity" isActive={pathname.includes("/activity")} newMessages={mentionCount} onClick={() => router.push(`/workspace/${workspaceId}/activity`)} />
             <SidebarButton icon={Files} label="files" isActive={pathname.includes("/files")} onClick={() => router.push(`/workspace/${workspaceId}/files`)} />
             <SidebarButton icon={MoreHorizontal} label="more"  onClick={handleOpenModal }/>
             <div className="flex flex-col items-center justify-center gap-y-1 mt-auto" >
