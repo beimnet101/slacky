@@ -1,8 +1,6 @@
 import { cva, type VariantProps } from "class-variance-authority";
-import { Icon, LucideIcon } from "lucide-react";
-import { Id } from "../../../../convex/_generated/dataModel";
+import { LucideIcon } from "lucide-react";
 import { IconType } from "react-icons/lib";
-import exp from "constants";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { useWorkspaceId } from "@/hooks/use-workspace-id";
@@ -37,6 +35,7 @@ interface SidebarItemProps {
   id: string;
   icon: LucideIcon | IconType;
   variant?: VariantProps<typeof SidebarItemVariants>["variant"];
+  href?: string;
 
 
 };
@@ -46,9 +45,11 @@ export const SidebarItem = ({
   id,
   icon: Icon,
   variant,
+  href,
 }: SidebarItemProps) => {
 
   const workspaceId = useWorkspaceId();
+  const resolvedHref = href ?? `/workspace/${workspaceId}/channel/${id}`;
   return (
     <Button
       variant="transparent"
@@ -56,7 +57,7 @@ export const SidebarItem = ({
       className={cn(SidebarItemVariants({ variant }))}
       asChild
     >
-      <Link href={`/workspace/${workspaceId}/channel/${id}`}>
+      <Link href={resolvedHref}>
         <Icon className="size-3.5  mr-0 shrink-0" />
         <span className="text-sm truncate">{label}</span>
 
