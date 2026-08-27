@@ -11,6 +11,24 @@ import { useWorkspaceId } from "@/hooks/use-workspace-id";
 import { useGetConversations } from "@/features/conversations/api/use-get-conversations";
 import { useCurrentMember } from "@/features/members/api/use-current-member";
 
+function extractText(body: string): string {
+    try {
+        const delta = JSON.parse(body);
+        if (delta?.ops && Array.isArray(delta.ops)) {
+            return delta.ops
+                .map((op: { insert?: unknown }) =>
+                    typeof op.insert === "string" ? op.insert : ""
+                )
+                .join("")
+                .replace(/\n+$/, "")
+                .trim();
+        }
+    } catch {
+        // not JSON, return as-is
+    }
+    return body;
+}
+
 export default function DmsPage() {
     const router = useRouter();
     const workspaceId = useWorkspaceId();
@@ -125,7 +143,7 @@ export default function DmsPage() {
                                             </div>
                                             {conv.lastMessage ? (
                                                 <p className="text-xs text-gray-400 truncate mt-0.5">
-                                                    {conv.lastMessage.body}
+                                                    {extractText(conv.lastMessage.body)}
                                                 </p>
                                             ) : (
                                                 <p className="text-xs text-gray-600 mt-0.5 italic">
