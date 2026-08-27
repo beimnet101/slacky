@@ -27,26 +27,8 @@ export const Conversation = ({ id }: ConversationProps) => {
     const initiateMutation = useMutation(api.calls.initiate);
 
     const handleVideoCall = async () => {
-        if (!currentMember || !member) return;
         try {
-            const pc = new RTCPeerConnection({
-                iceServers: [
-                    { urls: "stun:stun.l.google.com:19302" },
-                    { urls: "stun:stun1.l.google.com:19302" },
-                ],
-            });
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-            stream.getTracks().forEach((track) => pc.addTrack(track, stream));
-            const offer = await pc.createOffer();
-            await pc.setLocalDescription(offer);
-            pc.close();
-            stream.getTracks().forEach((t) => t.stop());
-
-            await initiateMutation({
-                workspaceId,
-                receiverId: memberId,
-                offer: JSON.stringify(offer),
-            });
+            await initiateMutation({ workspaceId, receiverId: memberId });
         } catch (err) {
             console.error("Failed to initiate call:", err);
         }

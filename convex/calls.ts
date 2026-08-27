@@ -9,7 +9,7 @@ const getMember = async (ctx: any, workspaceId: any, userId: any) => {
 };
 
 export const initiate = mutation({
-  args: { workspaceId: v.id("workspaces"), receiverId: v.id("members"), offer: v.string() },
+  args: { workspaceId: v.id("workspaces"), receiverId: v.id("members") },
   handler: async (ctx, args) => {
     const userId = await auth.getUserId(ctx);
     if (!userId) throw new Error("Unauthorized");
@@ -20,8 +20,14 @@ export const initiate = mutation({
       callerId: caller._id,
       receiverId: args.receiverId,
       status: "ringing",
-      offer: args.offer,
     });
+  },
+});
+
+export const setOffer = mutation({
+  args: { callId: v.id("calls"), offer: v.string() },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.callId, { offer: args.offer });
   },
 });
 
