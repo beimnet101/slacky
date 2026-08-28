@@ -8,7 +8,8 @@ const Editor = dynamic(() => import("@/components/editor"), { ssr: false })
 import { format, isToday, isYesterday } from "date-fns";
 import { Hint } from "./ui/hint";
 import { Avatar, AvatarImage, AvatarFallback } from "./ui/avatar";
-import { Thumbnail } from "./thumbnail";
+import { Thumbnail, VideoPlayer } from "./thumbnail";
+import { FileText } from "lucide-react";
 import { Toolbar } from "./toolbar";
 import { useUpdateMessage } from "@/features/messages/api/use-update-message";
 import { useRemoveMessage } from "@/features/messages/api/use-remove-message";
@@ -33,6 +34,8 @@ interface MessageProps {
         }>;
     body: Doc<"messages">["body"];
     image: string | null | undefined;
+    video?: string | null | undefined;
+    canvas?: { _id: string; title: string; content: string } | null;
     createdAt: Doc<"messages">["_creationTime"]
     updatedAt: Doc<"messages">["updatedAt"];
     isEditing: boolean;
@@ -64,6 +67,8 @@ export const Message = (
 
         body,
         image,
+        video,
+        canvas,
         createdAt,
         updatedAt,
         isEditing,
@@ -175,6 +180,19 @@ export const Message = (
 
                                 <Renderer value={body} />
                                 <Thumbnail url={image} />
+                                <VideoPlayer url={video} />
+                                {canvas && (
+                                    <div className="flex items-start gap-2 border border-slate-200 rounded-lg p-3 my-2 max-w-[360px] bg-white hover:bg-slate-50 transition-colors">
+                                        <div className="flex-shrink-0 w-8 h-8 bg-teal-600/20 rounded flex items-center justify-center mt-0.5">
+                                            <FileText className="size-4 text-teal-600" />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-semibold text-slate-800 truncate">{canvas.title}</p>
+                                            <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{canvas.content.slice(0, 100)}</p>
+                                            <span className="text-xs text-teal-600 font-medium mt-1 block">Canvas</span>
+                                        </div>
+                                    </div>
+                                )}
                                 {updatedAt ? (
                                     <span className="text-xs text-muted-foreground">
                                         (edited)
@@ -256,6 +274,19 @@ export const Message = (
                                 </div>
                                 <Renderer value={body} />
                                 <Thumbnail url={image} />
+                                <VideoPlayer url={video} />
+                                {canvas && (
+                                    <div className="flex items-start gap-2 border border-slate-200 rounded-lg p-3 my-2 max-w-[360px] bg-white hover:bg-slate-50 transition-colors">
+                                        <div className="flex-shrink-0 w-8 h-8 bg-teal-600/20 rounded flex items-center justify-center mt-0.5">
+                                            <FileText className="size-4 text-teal-600" />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-semibold text-slate-800 truncate">{canvas.title}</p>
+                                            <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{canvas.content.slice(0, 100)}</p>
+                                            <span className="text-xs text-teal-600 font-medium mt-1 block">Canvas</span>
+                                        </div>
+                                    </div>
+                                )}
                                 {updatedAt ? (
                                     <span className="text-xs text-muted-foreground">(edited)</span>
                                 ) : null}
@@ -266,9 +297,7 @@ export const Message = (
                                     timestamp={threadTimestamp}
                                     name={threadName}
                                     onClick={() => onOpenMessage(id)}
-
                                 />
-
                             </div>
                         )}
                 </div>

@@ -21,6 +21,7 @@ type CreateMessageValues = {
   workspaceId: Id<"workspaces">;
   body: string;
   image?: Id<"_storage"> | undefined;
+  video?: Id<"_storage"> | undefined;
 }
 
 
@@ -47,10 +48,11 @@ export const ChatInput = ({
 
   const handleSubmit = async (
     { body,
-      image }: {
+      image,
+      video }: {
         body: string;
         image: File | null;
-
+        video: File | null;
       }) => {
     try {
       setIsPendng(true);
@@ -60,29 +62,34 @@ export const ChatInput = ({
         workspaceId,
         body,
         image: undefined,
-
+        video: undefined,
       };
 
       if (image) {
-
         const url = await generateUploadurl({}, { throwError: true });
-        console.log({ url });
-        if (!url) {
-          throw new Error("url not found");
-        }
+        if (!url) throw new Error("url not found");
         const result = await fetch(url, {
-
           method: "POST",
           headers: { "Content-Type": image.type },
           body: image,
         });
-        console.log({ result });
-        if (!result.ok) {
-          throw new Error("Failed to upload image");
-        }
+        if (!result.ok) throw new Error("Failed to upload image");
         const { storageId } = await result.json();
         values.image = storageId;
-      };
+      }
+
+      if (video) {
+        const url = await generateUploadurl({}, { throwError: true });
+        if (!url) throw new Error("url not found");
+        const result = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": video.type },
+          body: video,
+        });
+        if (!result.ok) throw new Error("Failed to upload video");
+        const { storageId } = await result.json();
+        values.video = storageId;
+      }
 
       await createMessage(values,
         { throwError: true });

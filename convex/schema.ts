@@ -51,13 +51,15 @@ const schema = defineSchema({
   messages: defineTable({
     body: v.string(),
     image: v.optional(v.id("_storage")),
+    video: v.optional(v.id("_storage")),
+    canvasId: v.optional(v.id("canvases")),
     memberId: v.id("members"),
     workspaceId: v.id("workspaces"),
     channelId: v.optional(v.id("channels")),
     parentMessageId: v.optional(v.id("messages")),
     conversationId: v.optional(v.id("conversations")),
     updatedAt: v.optional(v.number()),
-    
+
 
   })
     .index("by_workspace_id", ["workspaceId"])

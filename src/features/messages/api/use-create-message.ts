@@ -7,6 +7,8 @@ type RequestType = {
   body: string,
   workspaceId:Id<"workspaces">,
   image?:Id<"_storage">,
+  video?:Id<"_storage">,
+  canvasId?:Id<"canvases">,
   channelId?:Id<"channels">,
   parentMessageId?:Id<"messages">,
   conversationId?:Id<"conversations">

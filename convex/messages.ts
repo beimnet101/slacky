@@ -214,6 +214,12 @@ export const getById = query({
             image: message.image
                 ? await ctx.storage.getUrl(message.image)
                 : undefined,
+            video: message.video
+                ? await ctx.storage.getUrl(message.video)
+                : undefined,
+            canvas: message.canvasId
+                ? await ctx.db.get(message.canvasId)
+                : undefined,
             user,
             member,
             reaction: reactionWithoutMemberIdProperty,
@@ -279,6 +285,10 @@ export const get = query({
                         const thread = await populateThread(ctx, message._id)
                         const image = message.image
                             ? await ctx.storage.getUrl(message.image) : undefined;
+                        const video = message.video
+                            ? await ctx.storage.getUrl(message.video) : undefined;
+                        const canvas = message.canvasId
+                            ? await ctx.db.get(message.canvasId) : undefined;
 
                         const reactionsWithCounts = reactions.map((reaction) => {
                             return {
@@ -315,6 +325,8 @@ export const get = query({
                         return {
                             ...message,
                             image,
+                            video,
+                            canvas,
                             member,
                             user,
                             reactions: reactionWithoutMemberIdProperty,
@@ -346,6 +358,8 @@ export const create = mutation({
     args: {
         body: v.string(),
         image: v.optional(v.id(("_storage"))),
+        video: v.optional(v.id("_storage")),
+        canvasId: v.optional(v.id("canvases")),
         workspaceId: v.id("workspaces"),
         channelId: v.optional(v.id("channels")),
         conversationId: v.optional(v.id("conversations")),
@@ -379,6 +393,8 @@ export const create = mutation({
             memberId: member._id,
             body: args.body,
             image: args.image,
+            video: args.video,
+            canvasId: args.canvasId,
             workspaceId: args.workspaceId,
             conversationId: _conversationId,
             channelId: args.channelId,

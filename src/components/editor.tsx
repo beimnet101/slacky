@@ -3,7 +3,7 @@ import "quill/dist/quill.snow.css";
 import { Button } from "./ui/button";
 import { MutableRefObject, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { PiTextAa } from "react-icons/pi";
-import { ImageIcon, Smile, XIcon } from "lucide-react";
+import { ImageIcon, Smile, XIcon, VideoIcon } from "lucide-react";
 import { MdSend } from "react-icons/md";
 import { Hint } from "./ui/hint";
 import { Delta, Op } from "quill/core";
@@ -15,6 +15,7 @@ import Image from "next/image";
 
 type EditorValue = {
     image: File | null;
+    video: File | null;
     body: string
 }
 
@@ -47,6 +48,7 @@ const Editor = ({
 
     const [text, setText] = useState("");
     const [image, setImage] = useState<File | null>(null);
+    const [video, setVideo] = useState<File | null>(null);
 
     const [isToolbarVisible, setIsToolbarVisible] = useState(false);
 
@@ -57,6 +59,7 @@ const Editor = ({
     const defaultValueRef = useRef(defaultValue);
     const disabledRef = useRef(disabled);
     const imageElementRef = useRef<HTMLInputElement>(null);
+    const videoElementRef = useRef<HTMLInputElement>(null);
 
     useLayoutEffect(() => {
         submitRef.current = onSubmit;
@@ -99,10 +102,11 @@ const Editor = ({
                             handler: () => {
                                 const text = quill.getText();
                                 const addedImage = imageElementRef.current?.files?.[0] || null;
-                                const isEmpity = !addedImage && text.replace(/<(.|\n)*?>/g, "").trim().length === 0;
+                                const addedVideo = videoElementRef.current?.files?.[0] || null;
+                                const isEmpity = !addedImage && !addedVideo && text.replace(/<(.|\n)*?>/g, "").trim().length === 0;
                                 if (isEmpity) return;
                                 const body = JSON.stringify(quill.getContents());
-                                submitRef.current?.({ body, image: addedImage })
+                                submitRef.current?.({ body, image: addedImage, video: addedVideo })
                             }
                         },
                         shift_enter: {
@@ -171,7 +175,7 @@ const Editor = ({
         quill?.insertText(length - 1, emojiValue);
 
     }
-    const isEmpty = !image && text.replace(/<(.|\n)*?>/g, "").trim().length === 0;
+    const isEmpty = !image && !video && text.replace(/<(.|\n)*?>/g, "").trim().length === 0;
     console.log({ isEmpty, text });
 
     return (
@@ -182,6 +186,13 @@ const Editor = ({
                 accept="image/*"
                 ref={imageElementRef}
                 onChange={(event) => setImage(event.target.files![0])}
+                className="hidden"
+            />
+            <input
+                type="file"
+                accept="video/*"
+                ref={videoElementRef}
+                onChange={(event) => setVideo(event.target.files![0])}
                 className="hidden"
             />
             <div>
@@ -198,7 +209,6 @@ const Editor = ({
                                         onClick={() => {
                                             setImage(null);
                                             imageElementRef.current!.value = "";
-
                                         }}
                                         className="hidden group-hover/image:flex rounded-full bg-black/70 hover:bg-black absolute -top-2.5 -right-2.5 text-white size-6 z-[4] borde-2 border-white items-center justify-center">
                                         <XIcon className="size-3.5" />
@@ -211,9 +221,29 @@ const Editor = ({
                                     className="rounded-xl  overflow-hidden border object-cover "
                                 />
                             </div>
-
                         </div>
+                    )}
 
+                    {!!video && (
+                        <div className="p-2">
+                            <div className="relative flex items-center justify-center group/video">
+                                <Hint label="Remove video">
+                                    <button
+                                        onClick={() => {
+                                            setVideo(null);
+                                            videoElementRef.current!.value = "";
+                                        }}
+                                        className="hidden group-hover/video:flex rounded-full bg-black/70 hover:bg-black absolute -top-2.5 -right-2.5 text-white size-6 z-[4] border-2 border-white items-center justify-center">
+                                        <XIcon className="size-3.5" />
+                                    </button>
+                                </Hint>
+                                <video
+                                    src={URL.createObjectURL(video)}
+                                    className="rounded-xl border max-h-[120px] max-w-[200px] object-cover"
+                                    controls
+                                />
+                            </div>
+                        </div>
                     )}
 
 
@@ -241,16 +271,28 @@ const Editor = ({
                         </EmojiPopover>
 
                         {variant === "create" && (
-                            <Hint label="Image">
-                                <Button
-                                    disabled={disabled}
-                                    size="iconSm"
-                                    variant="ghost"
-                                    onClick={() => imageElementRef.current?.click()}
-                                >
-                                    <ImageIcon className="size-4" />
-                                </Button>
-                            </Hint>
+                            <>
+                                <Hint label="Image">
+                                    <Button
+                                        disabled={disabled}
+                                        size="iconSm"
+                                        variant="ghost"
+                                        onClick={() => imageElementRef.current?.click()}
+                                    >
+                                        <ImageIcon className="size-4" />
+                                    </Button>
+                                </Hint>
+                                <Hint label="Video">
+                                    <Button
+                                        disabled={disabled}
+                                        size="iconSm"
+                                        variant="ghost"
+                                        onClick={() => videoElementRef.current?.click()}
+                                    >
+                                        <VideoIcon className="size-4" />
+                                    </Button>
+                                </Hint>
+                            </>
                         )}
 
                         {variant === "update" && (
@@ -270,6 +312,7 @@ const Editor = ({
                                         onSubmit({
                                             body: JSON.stringify(quillRef.current?.getContents()),
                                             image,
+                                            video,
                                         })
                                     }}
                                     disabled={disabled || isEmpty}
@@ -286,6 +329,7 @@ const Editor = ({
                                     onSubmit({
                                         body: JSON.stringify(quillRef.current?.getContents()),
                                         image,
+                                        video,
                                     })
                                 }}
                                 disabled={disabled || isEmpty}

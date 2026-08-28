@@ -11,14 +11,22 @@ import {
   ChevronDown,
   X,
   FileIcon,
+  Share2,
+  Hash,
+  MessageSquare,
 } from "lucide-react";
 import { useWorkspaceId } from "@/hooks/use-workspace-id";
 import { useGetCanvases } from "@/features/canvases/api/use-get-canvases";
 import { useCreateCanvas } from "@/features/canvases/api/use-create-canvas";
 import { useCurrentMember } from "@/features/members/api/use-current-member";
+import { useGetChannels } from "@/features/channels/api/use-get-channels";
+import { useGetConversations } from "@/features/conversations/api/use-get-conversations";
+import { useCreateMessage } from "@/features/messages/api/use-create-message";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
+import { Id } from "../../../../../convex/_generated/dataModel";
 
 const TEMPLATES = [
   { id: "onboarding", name: "Employee Onboarding", description: "Welcome new people.", preview: "Welcome [name]! We're happy you're here.\n\n✅ Your First Week Tasks\nMake sure to complete these tasks before the end of the week.\n□ Use the checklist format so you can track progress over time.\n\n📅 Meetings to Attend\nHere's an overview of sessions and events during your first few weeks." },
@@ -159,7 +167,146 @@ function TemplatePickerModal({ open, onClose, onCreateCanvas }: TemplatePicker) 
   );
 }
 
-function CanvasListItem({ canvas }: { canvas: Canvas }) {
+interface ShareCanvasDialogProps {
+  canvas: Canvas | null;
+  workspaceId: Id<"workspaces">;
+  onClose: () => void;
+}
+
+function ShareCanvasDialog({ canvas, workspaceId, onClose }: ShareCanvasDialogProps) {
+  const [search, setSearch] = useState("");
+  const [isSharing, setIsSharing] = useState(false);
+
+  const { data: channels = [] } = useGetChannels({ workspaceId });
+  const { data: conversations = [] } = useGetConversations({ workspaceId });
+  const { mutate: createMessage } = useCreateMessage();
+
+  const filteredChannels = (channels || []).filter((c: any) =>
+    c.name.toLowerCase().includes(search.toLowerCase())
+  );
+  const filteredConversations = (conversations || []).filter((c: any) =>
+    (c.otherMember?.name || "").toLowerCase().includes(search.toLowerCase())
+  );
+
+  const shareToChannel = async (channelId: Id<"channels">) => {
+    if (!canvas) return;
+    setIsSharing(true);
+    try {
+      await createMessage({
+        body: JSON.stringify({ ops: [{ insert: "\n" }] }),
+        workspaceId,
+        channelId,
+        canvasId: canvas._id as Id<"canvases">,
+      }, { throwError: true });
+      toast.success(`Canvas shared to channel`);
+      onClose();
+    } catch {
+      toast.error("Failed to share canvas");
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
+  const shareToConversation = async (conversationId: Id<"conversations">) => {
+    if (!canvas) return;
+    setIsSharing(true);
+    try {
+      await createMessage({
+        body: JSON.stringify({ ops: [{ insert: "\n" }] }),
+        workspaceId,
+        conversationId,
+        canvasId: canvas._id as Id<"canvases">,
+      }, { throwError: true });
+      toast.success(`Canvas shared`);
+      onClose();
+    } catch {
+      toast.error("Failed to share canvas");
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
+  return (
+    <Dialog open={!!canvas} onOpenChange={onClose}>
+      <DialogContent className="p-0 max-w-md bg-[#1a1d21] border border-white/10 text-white overflow-hidden">
+        <div className="flex flex-col h-[480px]">
+          <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
+            <div>
+              <span className="font-semibold text-sm">Share canvas</span>
+              {canvas && (
+                <p className="text-xs text-white/50 truncate max-w-[280px]">{canvas.title}</p>
+              )}
+            </div>
+            <button onClick={onClose} className="text-white/50 hover:text-white">
+              <X className="size-4" />
+            </button>
+          </div>
+
+          <div className="px-3 py-2 border-b border-white/10">
+            <div className="relative">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 size-3.5 text-white/40" />
+              <input
+                className="w-full bg-white/10 rounded text-sm pl-7 pr-3 py-1.5 outline-none placeholder:text-white/40 text-white"
+                placeholder="Search channels & people"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                autoFocus
+              />
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto">
+            {filteredChannels.length > 0 && (
+              <div>
+                <div className="px-4 py-2">
+                  <span className="text-xs font-semibold text-white/40 uppercase tracking-wider">Channels</span>
+                </div>
+                {filteredChannels.map((channel: any) => (
+                  <button
+                    key={channel._id}
+                    disabled={isSharing}
+                    onClick={() => shareToChannel(channel._id)}
+                    className="w-full flex items-center gap-3 px-4 py-2 text-sm text-white/80 hover:bg-white/5 transition-colors disabled:opacity-50"
+                  >
+                    <Hash className="size-4 text-white/40 flex-shrink-0" />
+                    <span>{channel.name}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {filteredConversations.length > 0 && (
+              <div>
+                <div className="px-4 py-2 mt-1">
+                  <span className="text-xs font-semibold text-white/40 uppercase tracking-wider">Direct Messages</span>
+                </div>
+                {filteredConversations.map((conv: any) => (
+                  <button
+                    key={conv.conversationId}
+                    disabled={isSharing}
+                    onClick={() => shareToConversation(conv.conversationId)}
+                    className="w-full flex items-center gap-3 px-4 py-2 text-sm text-white/80 hover:bg-white/5 transition-colors disabled:opacity-50"
+                  >
+                    <MessageSquare className="size-4 text-white/40 flex-shrink-0" />
+                    <span>{conv.otherMember?.name || "Unknown"}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {filteredChannels.length === 0 && filteredConversations.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <p className="text-sm text-white/50">No results found</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function CanvasListItem({ canvas, onShare }: { canvas: Canvas; onShare: (canvas: Canvas) => void }) {
   return (
     <div className="flex items-center gap-3 px-4 py-3 hover:bg-white/5 rounded-lg cursor-pointer group">
       <div className="flex-shrink-0 w-8 h-8 bg-teal-600/20 rounded flex items-center justify-center">
@@ -171,6 +318,16 @@ function CanvasListItem({ canvas }: { canvas: Canvas }) {
           {canvas.creator?.name ?? "Unknown"} &middot; {formatDate(canvas._creationTime)}
         </p>
       </div>
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onShare(canvas);
+        }}
+        className="opacity-0 group-hover:opacity-100 flex items-center gap-1 text-xs text-white/60 hover:text-white bg-white/10 hover:bg-white/20 px-2 py-1 rounded transition-all"
+      >
+        <Share2 className="size-3" />
+        Share
+      </button>
     </div>
   );
 }
@@ -183,6 +340,7 @@ function AllFilesView({
   setActiveTab,
   currentMemberId,
   onOpenTemplateModal,
+  onShare,
 }: {
   canvases: Canvas[];
   search: string;
@@ -191,6 +349,7 @@ function AllFilesView({
   setActiveTab: (v: ActiveTab) => void;
   currentMemberId?: string;
   onOpenTemplateModal: () => void;
+  onShare: (canvas: Canvas) => void;
 }) {
   const [showTypeFilter, setShowTypeFilter] = useState(false);
 
@@ -297,7 +456,7 @@ function AllFilesView({
         {filtered.length > 0 ? (
           <div className="space-y-1">
             {filtered.map((canvas) => (
-              <CanvasListItem key={canvas._id} canvas={canvas} />
+              <CanvasListItem key={canvas._id} canvas={canvas} onShare={onShare} />
             ))}
           </div>
         ) : (
@@ -321,11 +480,13 @@ function CanvasesView({
   search,
   setSearch,
   onOpenTemplateModal,
+  onShare,
 }: {
   canvases: Canvas[];
   search: string;
   setSearch: (v: string) => void;
   onOpenTemplateModal: () => void;
+  onShare: (canvas: Canvas) => void;
 }) {
   const filtered = canvases.filter((c) =>
     c.title.toLowerCase().includes(search.toLowerCase())
@@ -356,7 +517,7 @@ function CanvasesView({
         {filtered.length > 0 ? (
           <div className="space-y-1">
             {filtered.map((canvas) => (
-              <CanvasListItem key={canvas._id} canvas={canvas} />
+              <CanvasListItem key={canvas._id} canvas={canvas} onShare={onShare} />
             ))}
           </div>
         ) : (
@@ -381,7 +542,7 @@ function CanvasesView({
   );
 }
 
-function StarredView({ canvases }: { canvases: Canvas[] }) {
+function StarredView({ canvases, onShare }: { canvases: Canvas[]; onShare: (canvas: Canvas) => void }) {
   const starred = canvases.filter((c) => c.isStarred);
 
   return (
@@ -393,7 +554,7 @@ function StarredView({ canvases }: { canvases: Canvas[] }) {
         {starred.length > 0 ? (
           <div className="space-y-1">
             {starred.map((canvas) => (
-              <CanvasListItem key={canvas._id} canvas={canvas} />
+              <CanvasListItem key={canvas._id} canvas={canvas} onShare={onShare} />
             ))}
           </div>
         ) : (
@@ -423,6 +584,7 @@ export default function FilesPage() {
   const [search, setSearch] = useState("");
   const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [activeTab, setActiveTab] = useState<ActiveTab>("all");
+  const [sharingCanvas, setSharingCanvas] = useState<Canvas | null>(null);
 
   const navItems = [
     { id: "all" as ActiveView, label: "All files", icon: FolderOpen },
@@ -476,6 +638,7 @@ export default function FilesPage() {
             setActiveTab={setActiveTab}
             currentMemberId={currentMember?._id}
             onOpenTemplateModal={() => setShowTemplateModal(true)}
+            onShare={setSharingCanvas}
           />
         )}
         {activeView === "canvases" && (
@@ -484,10 +647,11 @@ export default function FilesPage() {
             search={search}
             setSearch={setSearch}
             onOpenTemplateModal={() => setShowTemplateModal(true)}
+            onShare={setSharingCanvas}
           />
         )}
         {activeView === "starred" && (
-          <StarredView canvases={canvases as Canvas[]} />
+          <StarredView canvases={canvases as Canvas[]} onShare={setSharingCanvas} />
         )}
       </div>
 
@@ -496,6 +660,13 @@ export default function FilesPage() {
         open={showTemplateModal}
         onClose={() => setShowTemplateModal(false)}
         onCreateCanvas={handleCreateCanvas}
+      />
+
+      {/* Share canvas dialog */}
+      <ShareCanvasDialog
+        canvas={sharingCanvas}
+        workspaceId={workspaceId}
+        onClose={() => setSharingCanvas(null)}
       />
     </div>
   );

@@ -103,6 +103,8 @@ export const MessageList = ({
                                 reactions={message.reactions}
                                 body={message.body}
                                 image={message.image}
+                                video={(message as any).video}
+                                canvas={(message as any).canvas}
                                 updatedAt={message.updatedAt}
                                 createdAt={message._creationTime}
                                 isEditing={editingId === message._id}
