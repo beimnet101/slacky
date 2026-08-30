@@ -10,9 +10,11 @@ import {
   useTracks,
   ControlBar,
   useParticipants,
+  useConnectionState,
 } from "@livekit/components-react";
 import { Track } from "livekit-client";
-import { Loader, Users } from "lucide-react";
+import { ConnectionState } from "livekit-client";
+import { Loader, Users, X } from "lucide-react";
 
 interface VideoConferenceModalProps {
   roomName: string;
@@ -30,29 +32,38 @@ function ConferenceRoom({ channelName, onClose }: { channelName?: string; onClos
     { onlySubscribed: false }
   );
   const participants = useParticipants();
+  const connectionState = useConnectionState();
 
   return (
     <div className="fixed inset-0 z-50 bg-[#1a1d21] flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between px-5 py-3 border-b border-white/10">
         <div className="flex items-center gap-2">
-          <div className="size-2 rounded-full bg-green-500 animate-pulse" />
+          <div className={`size-2 rounded-full ${connectionState === ConnectionState.Connected ? "bg-green-500 animate-pulse" : "bg-yellow-500"}`} />
           <span className="text-white font-semibold text-sm">
             {channelName ? `# ${channelName}` : "Conference"}
           </span>
+          {connectionState !== ConnectionState.Connected && (
+            <span className="text-xs text-yellow-400">Connecting...</span>
+          )}
         </div>
-        <div className="flex items-center gap-2 text-gray-400 text-sm">
-          <Users className="size-4" />
-          <span>{participants.length} participant{participants.length !== 1 ? "s" : ""}</span>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 text-gray-400 text-sm">
+            <Users className="size-4" />
+            <span>{participants.length} participant{participants.length !== 1 ? "s" : ""}</span>
+          </div>
+          <button
+            onClick={onClose}
+            className="size-7 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-gray-400 hover:text-white transition-colors"
+          >
+            <X className="size-4" />
+          </button>
         </div>
       </div>
 
       {/* Video grid */}
       <div className="flex-1 overflow-hidden p-3">
-        <GridLayout
-          tracks={tracks}
-          style={{ height: "100%" }}
-        >
+        <GridLayout tracks={tracks} style={{ height: "100%" }}>
           <ParticipantTile />
         </GridLayout>
       </div>
@@ -87,20 +98,29 @@ export const VideoConferenceModal = ({
   const [token, setToken] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const getToken = useAction(api.conferences.getToken);
-  const livekitUrl = process.env.NEXT_PUBLIC_LIVEKIT_URL!;
+  const livekitUrl = process.env.NEXT_PUBLIC_LIVEKIT_URL;
 
   useEffect(() => {
+    if (!livekitUrl) {
+      setError("LiveKit URL not configured. Add NEXT_PUBLIC_LIVEKIT_URL to Vercel environment variables.");
+      return;
+    }
     getToken({ roomName, participantName: userName })
       .then(setToken)
-      .catch(() => setError("Failed to join conference"));
+      .catch(() => setError("Failed to get conference token. Check LiveKit credentials in Convex."));
   }, [roomName, userName]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (error) {
     return (
       <div className="fixed inset-0 z-50 bg-[#1a1d21] flex items-center justify-center">
-        <div className="text-center text-white space-y-3">
-          <p className="text-red-400">{error}</p>
-          <button onClick={onClose} className="text-sm underline text-gray-400">Close</button>
+        <div className="text-center space-y-4 max-w-sm px-6">
+          <p className="text-red-400 text-sm">{error}</p>
+          <button
+            onClick={onClose}
+            className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-sm rounded-lg transition-colors"
+          >
+            Close
+          </button>
         </div>
       </div>
     );
@@ -109,7 +129,7 @@ export const VideoConferenceModal = ({
   if (!token) {
     return (
       <div className="fixed inset-0 z-50 bg-[#1a1d21] flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3 text-white">
+        <div className="flex flex-col items-center gap-3">
           <Loader className="size-8 animate-spin text-purple-400" />
           <p className="text-sm text-gray-400">Joining conference...</p>
         </div>
@@ -124,6 +144,7 @@ export const VideoConferenceModal = ({
       token={token}
       serverUrl={livekitUrl}
       onDisconnected={onClose}
+      onError={(err) => setError(`Connection error: ${err.message}`)}
       data-lk-theme="default"
       style={{ height: "100dvh" }}
     >
