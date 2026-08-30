@@ -133,35 +133,6 @@ export const Message = (
         }
     };
 
-    const AssignSuggestionBar = assignSuggestions.length > 0 ? (
-        <div className="flex flex-col gap-1 mt-1">
-            {assignSuggestions.map((s) => (
-                <div
-                    key={s.issueKey + s.jiraAccountId}
-                    className="flex items-center gap-2 rounded-md bg-blue-50 border border-blue-200 px-3 py-1.5 text-sm"
-                >
-                    <div className="size-4 bg-blue-600 rounded flex items-center justify-center text-white font-bold text-[10px] flex-shrink-0">
-                        J
-                    </div>
-                    <span className="text-blue-800 font-mono text-xs font-semibold">{s.issueKey}</span>
-                    <span className="text-blue-700 text-xs">→</span>
-                    <span className="text-blue-800 text-xs">{s.jiraDisplayName}</span>
-                    <span className="text-muted-foreground text-xs">Assign?</span>
-                    <button
-                        onClick={() => handleAssignSuggestion(s.issueKey, s.jiraAccountId, s.jiraDisplayName)}
-                        disabled={assigningKey === s.issueKey + s.jiraAccountId}
-                        className="ml-auto px-2 py-0.5 rounded bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 disabled:opacity-50 flex items-center gap-1"
-                    >
-                        {assigningKey === s.issueKey + s.jiraAccountId ? (
-                            <Loader2 className="size-3 animate-spin" />
-                        ) : null}
-                        Assign
-                    </button>
-                </div>
-            ))}
-        </div>
-    ) : null;
-
     // Detect Jira browse URLs in message body
     const jiraIssueKeys: { issueKey: string }[] = [];
     const mentionedNames: string[] = [];
@@ -231,6 +202,31 @@ export const Message = (
             }
         }
     }
+
+    const AssignSuggestionBar = assignSuggestions.length > 0 ? (
+        <div className="flex flex-col gap-1 mt-1">
+            {assignSuggestions.map((s) => (
+                <div
+                    key={s.issueKey + s.jiraAccountId}
+                    className="flex items-center gap-2 rounded-md bg-blue-50 border border-blue-200 px-3 py-1.5 text-sm"
+                >
+                    <div className="size-4 bg-blue-600 rounded flex items-center justify-center text-white font-bold text-[10px] flex-shrink-0">J</div>
+                    <span className="text-blue-800 font-mono text-xs font-semibold">{s.issueKey}</span>
+                    <span className="text-blue-700 text-xs">→</span>
+                    <span className="text-blue-800 text-xs">{s.jiraDisplayName}</span>
+                    <span className="text-muted-foreground text-xs">Assign?</span>
+                    <button
+                        onClick={() => handleAssignSuggestion(s.issueKey, s.jiraAccountId, s.jiraDisplayName)}
+                        disabled={assigningKey === s.issueKey + s.jiraAccountId}
+                        className="ml-auto px-2 py-0.5 rounded bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 disabled:opacity-50 flex items-center gap-1"
+                    >
+                        {assigningKey === s.issueKey + s.jiraAccountId && <Loader2 className="size-3 animate-spin" />}
+                        Assign
+                    </button>
+                </div>
+            ))}
+        </div>
+    ) : null;
 
     const handleSendCanvas = async (canvasId: Id<"canvases">) => {
         if (!channelId && !conversationId) return;
