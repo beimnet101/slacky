@@ -20,6 +20,8 @@ interface MessageListProps {
     loadMore: () => void;
     isLoadingMore: boolean;
     canLoadMore: boolean;
+    channelId?: Id<"channels">;
+    conversationId?: Id<"conversations">;
 };
 
 
@@ -48,6 +50,8 @@ export const MessageList = ({
     loadMore,
     isLoadingMore,
     canLoadMore,
+    channelId,
+    conversationId,
 
 }: MessageListProps) => {
     const workspaceId = useWorkspaceId();
@@ -118,6 +122,8 @@ export const MessageList = ({
                                 threadName={message.threadName}
                                 threadTimestamp={message.threadTimestamp}
                                 callEvent={(message as any).callEvent}
+                                channelId={channelId}
+                                conversationId={conversationId}
                             />
                         )
                     })}

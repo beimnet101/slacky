@@ -58,6 +58,7 @@ export const Conversation = ({ id }: ConversationProps) => {
                 loadMore={loadMore}
                 isLoadingMore={status === "LoadingMore"}
                 canLoadMore={status === "CanLoadMore"}
+                conversationId={id}
             />
             <ChatInput
                 placeholder={`Message ${member?.user?.name}`}

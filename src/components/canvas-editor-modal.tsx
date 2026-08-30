@@ -3,14 +3,15 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
-import { X, Check, Star } from "lucide-react";
+import { X, Star, Send } from "lucide-react";
 
 interface CanvasEditorModalProps {
   canvasId: Id<"canvases">;
   onClose: () => void;
+  onSend?: () => void; // called after saving to send as a new message
 }
 
-export const CanvasEditorModal = ({ canvasId, onClose }: CanvasEditorModalProps) => {
+export const CanvasEditorModal = ({ canvasId, onClose, onSend }: CanvasEditorModalProps) => {
   const canvas = useQuery(api.canvases.getById, { id: canvasId });
   const updateCanvas = useMutation(api.canvases.update);
 
@@ -19,6 +20,11 @@ export const CanvasEditorModal = ({ canvasId, onClose }: CanvasEditorModalProps)
   const [saved, setSaved] = useState(true);
   const saveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const initializedRef = useRef(false);
+  const latestTitle = useRef(title);
+  const latestContent = useRef(content);
+
+  useEffect(() => { latestTitle.current = title; }, [title]);
+  useEffect(() => { latestContent.current = content; }, [content]);
 
   // Populate once canvas loads
   useEffect(() => {
@@ -50,15 +56,27 @@ export const CanvasEditorModal = ({ canvasId, onClose }: CanvasEditorModalProps)
     scheduleSave(title, v);
   };
 
-  // Save on unmount if pending
+  // Flush any pending save on unmount
   useEffect(() => {
     return () => {
       if (saveTimerRef.current) {
         clearTimeout(saveTimerRef.current);
-        updateCanvas({ id: canvasId, title, content }).catch(() => {});
+        updateCanvas({ id: canvasId, title: latestTitle.current, content: latestContent.current }).catch(() => {});
       }
     };
-  }, [canvasId, title, content, updateCanvas]);
+  }, [canvasId, updateCanvas]);
+
+  const handleSend = async () => {
+    // Flush pending save first
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+    await updateCanvas({ id: canvasId, title, content });
+    setSaved(true);
+    onSend?.();
+    onClose();
+  };
 
   const toggleStar = async () => {
     if (!canvas) return;
@@ -93,17 +111,9 @@ export const CanvasEditorModal = ({ canvasId, onClose }: CanvasEditorModalProps)
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Save indicator */}
-          <div className="flex items-center gap-1 text-xs text-slate-400">
-            {saved ? (
-              <>
-                <Check className="size-3 text-green-500" />
-                <span>Saved</span>
-              </>
-            ) : (
-              <span className="animate-pulse">Saving...</span>
-            )}
-          </div>
+          <span className={`text-xs ${saved ? "text-green-500" : "text-slate-400 animate-pulse"}`}>
+            {saved ? "Saved" : "Saving..."}
+          </span>
 
           <button
             onClick={toggleStar}
@@ -112,6 +122,16 @@ export const CanvasEditorModal = ({ canvasId, onClose }: CanvasEditorModalProps)
           >
             <Star className={`size-4 ${canvas.isStarred ? "fill-yellow-400 text-yellow-400" : "text-slate-400"}`} />
           </button>
+
+          {onSend && (
+            <button
+              onClick={handleSend}
+              className="flex items-center gap-1.5 bg-[#007a5a] hover:bg-[#006649] text-white text-xs font-semibold px-3 py-1.5 rounded transition-colors"
+            >
+              <Send className="size-3.5" />
+              Send
+            </button>
+          )}
 
           <button
             onClick={onClose}
@@ -125,15 +145,12 @@ export const CanvasEditorModal = ({ canvasId, onClose }: CanvasEditorModalProps)
       {/* Editor */}
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-3xl mx-auto px-8 py-10">
-          {/* Title */}
           <input
             value={title}
             onChange={handleTitleChange}
             placeholder="Untitled canvas"
             className="w-full text-3xl font-bold text-slate-900 placeholder:text-slate-300 outline-none mb-6 bg-transparent"
           />
-
-          {/* Content */}
           <textarea
             value={content}
             onChange={handleContentChange}

@@ -10,10 +10,13 @@ import { format, isToday, isYesterday } from "date-fns";
 import { Hint } from "./ui/hint";
 import { Avatar, AvatarImage, AvatarFallback } from "./ui/avatar";
 import { Thumbnail, VideoPlayer } from "./thumbnail";
+import { FileAttachment } from "./file-attachment";
 import { FileText, Pencil } from "lucide-react";
 import { Toolbar } from "./toolbar";
 import { useUpdateMessage } from "@/features/messages/api/use-update-message";
 import { useRemoveMessage } from "@/features/messages/api/use-remove-message";
+import { useCreateMessage } from "@/features/messages/api/use-create-message";
+import { useWorkspaceId } from "@/hooks/use-workspace-id";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useConfirm } from "@/hooks/use-confirm";
@@ -22,6 +25,7 @@ import { useToggleReaction } from "@/features/reactions/api/use-toggle-reactions
 import { Reactions } from "./reactions";
 import { usePanel } from "@/hooks/use-panel";
 import { ThreadBar } from "./thread-bar";
+
 interface MessageProps {
     id: Id<"messages">;
     memberId: Id<"members">;
@@ -50,7 +54,8 @@ interface MessageProps {
     threadName?: string;
     threadTimestamp?: number;
     callEvent?: { status: "missed" | "ended" | "declined"; duration?: number } | null;
-
+    channelId?: Id<"channels">;
+    conversationId?: Id<"conversations">;
 };
 
 
@@ -86,11 +91,15 @@ export const Message = (
         threadName,
         threadTimestamp,
         callEvent,
+        channelId,
+        conversationId,
 
     }: MessageProps
 
 ) => {
     const { parentMessageId, onOpenMessage, onOpenProfile, onClose } = usePanel();
+    const workspaceId = useWorkspaceId();
+    const { mutate: createMessage } = useCreateMessage();
 
 
     const { mutate: updateMessage, isPending: isUpdatingMessage } = useUpdateMessage();
@@ -99,6 +108,21 @@ export const Message = (
     const isPending = isUpdatingMessage || isTogglingReaction;
 
     const [editingCanvasId, setEditingCanvasId] = useState<Id<"canvases"> | null>(null);
+
+    const handleSendCanvas = async (canvasId: Id<"canvases">) => {
+        if (!channelId && !conversationId) return;
+        try {
+            await createMessage({
+                body: JSON.stringify({ ops: [{ insert: "\n" }] }),
+                workspaceId,
+                channelId,
+                conversationId,
+                canvasId,
+            }, { throwError: true });
+        } catch {
+            toast.error("Failed to send canvas");
+        }
+    };
 
     const [ConfirmDialog, confirm] = useConfirm("Delete Message",
         "Are you sure you want to delete this message? This can not be undone"
@@ -215,17 +239,7 @@ export const Message = (
                                 <Thumbnail url={image} />
                                 <VideoPlayer url={video} />
                                 {file && fileName && (
-                                    <a
-                                        href={file}
-                                        download={fileName}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="flex items-center gap-2 border border-slate-200 rounded-lg px-3 py-2 my-2 max-w-[280px] bg-slate-50 hover:bg-slate-100 transition-colors"
-                                    >
-                                        <span className="text-lg">📎</span>
-                                        <span className="text-xs text-slate-700 truncate flex-1">{fileName}</span>
-                                        <span className="text-xs text-blue-600 font-medium flex-shrink-0">Download</span>
-                                    </a>
+                                    <FileAttachment url={file} fileName={fileName} />
                                 )}
                                 {canvas && (
                                     <button
@@ -281,6 +295,7 @@ export const Message = (
                     <CanvasEditorModal
                         canvasId={editingCanvasId}
                         onClose={() => setEditingCanvasId(null)}
+                        onSend={(channelId || conversationId) ? () => handleSendCanvas(editingCanvasId) : undefined}
                     />
                 )}
             </>
@@ -333,17 +348,7 @@ export const Message = (
                                 <Thumbnail url={image} />
                                 <VideoPlayer url={video} />
                                 {file && fileName && (
-                                    <a
-                                        href={file}
-                                        download={fileName}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="flex items-center gap-2 border border-slate-200 rounded-lg px-3 py-2 my-2 max-w-[280px] bg-slate-50 hover:bg-slate-100 transition-colors"
-                                    >
-                                        <span className="text-lg">📎</span>
-                                        <span className="text-xs text-slate-700 truncate flex-1">{fileName}</span>
-                                        <span className="text-xs text-blue-600 font-medium flex-shrink-0">Download</span>
-                                    </a>
+                                    <FileAttachment url={file} fileName={fileName} />
                                 )}
                                 {canvas && (
                                     <button
