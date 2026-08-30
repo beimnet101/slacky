@@ -97,18 +97,24 @@ export const VideoConferenceModal = ({
 }: VideoConferenceModalProps) => {
   const [token, setToken] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [leftIntentionally, setLeftIntentionally] = useState(false);
   const getToken = useAction(api.conferences.getToken);
   const livekitUrl = process.env.NEXT_PUBLIC_LIVEKIT_URL;
 
   useEffect(() => {
     if (!livekitUrl) {
-      setError("LiveKit URL not configured. Add NEXT_PUBLIC_LIVEKIT_URL to Vercel environment variables.");
+      setError("LiveKit URL not configured — add NEXT_PUBLIC_LIVEKIT_URL to Vercel environment variables.");
       return;
     }
     getToken({ roomName, participantName: userName })
       .then(setToken)
-      .catch(() => setError("Failed to get conference token. Check LiveKit credentials in Convex."));
+      .catch(() => setError("Failed to get conference token. Check LIVEKIT_API_KEY and LIVEKIT_API_SECRET in Convex."));
   }, [roomName, userName]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleLeave = () => {
+    setLeftIntentionally(true);
+    onClose();
+  };
 
   if (error) {
     return (
@@ -143,12 +149,12 @@ export const VideoConferenceModal = ({
       audio={true}
       token={token}
       serverUrl={livekitUrl}
-      onDisconnected={onClose}
-      onError={(err) => setError(`Connection error: ${err.message}`)}
+      onDisconnected={() => { if (leftIntentionally) onClose(); }}
+      onError={(err) => setError(`Connection failed: ${err.message}. Make sure NEXT_PUBLIC_LIVEKIT_URL is set in Vercel.`)}
       data-lk-theme="default"
       style={{ height: "100dvh" }}
     >
-      <ConferenceRoom channelName={channelName} onClose={onClose} />
+      <ConferenceRoom channelName={channelName} onClose={handleLeave} />
     </LiveKitRoom>
   );
 };
