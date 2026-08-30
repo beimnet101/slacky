@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { useAction } from "convex/react";
+import { useAction, useMutation as useConvexMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import {
   LiveKitRoom,
@@ -15,11 +15,14 @@ import {
 import { Track } from "livekit-client";
 import { ConnectionState } from "livekit-client";
 import { Loader, Users, X } from "lucide-react";
+import { Id } from "../../convex/_generated/dataModel";
 
 interface VideoConferenceModalProps {
   roomName: string;
   userName: string;
   channelName?: string;
+  channelId?: string;
+  workspaceId?: string;
   onClose: () => void;
 }
 
@@ -93,12 +96,16 @@ export const VideoConferenceModal = ({
   roomName,
   userName,
   channelName,
+  channelId,
+  workspaceId,
   onClose,
 }: VideoConferenceModalProps) => {
   const [token, setToken] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [leftIntentionally, setLeftIntentionally] = useState(false);
   const getToken = useAction(api.conferences.getToken);
+  const joinConference = useConvexMutation(api.activeConferences.join);
+  const leaveConference = useConvexMutation(api.activeConferences.leave);
   const livekitUrl = process.env.NEXT_PUBLIC_LIVEKIT_URL;
 
   useEffect(() => {
@@ -107,12 +114,23 @@ export const VideoConferenceModal = ({
       return;
     }
     getToken({ roomName, participantName: userName })
-      .then(setToken)
+      .then((t) => {
+        setToken(t);
+        if (channelId && workspaceId) {
+          joinConference({
+            channelId: channelId as Id<"channels">,
+            workspaceId: workspaceId as Id<"workspaces">,
+          }).catch(() => {});
+        }
+      })
       .catch(() => setError("Failed to get conference token. Check LIVEKIT_API_KEY and LIVEKIT_API_SECRET in Convex."));
   }, [roomName, userName]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleLeave = () => {
     setLeftIntentionally(true);
+    if (channelId) {
+      leaveConference({ channelId: channelId as Id<"channels"> }).catch(() => {});
+    }
     onClose();
   };
 

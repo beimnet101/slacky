@@ -4,7 +4,7 @@
 import { useGetChannel } from "@/features/channels/api/use-get-channel";
 import { useChannelId } from "@/hooks/use-channel-id";
 import { useWorkspaceId } from "@/hooks/use-workspace-id";
-import { Loader, TriangleAlert, Video, Users } from "lucide-react";
+import { Loader, TriangleAlert, Video } from "lucide-react";
 import { Header } from "./header";
 import { ChatInput } from "./chat-input";
 import { useGetMessages } from "@/features/messages/api/use-get-messages";
@@ -72,28 +72,46 @@ const ChannelIdPage = () => {
       />
 
       {/* Live conference banner */}
-      {activeConference && !inConference && (
+      {activeConference && (
         <div className="bg-green-50 border-b border-green-200 px-4 py-2 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="size-2 rounded-full bg-green-500 animate-pulse" />
-            <span className="text-sm font-medium text-green-800">
-              {activeConference.startedByName} started a video conference
-            </span>
+          <div className="flex items-center gap-3">
+            <div className="size-2 rounded-full bg-green-500 animate-pulse flex-shrink-0" />
+            <div className="flex items-center gap-2">
+              {/* Participant avatars */}
+              <div className="flex -space-x-2">
+                {(activeConference.participants ?? []).slice(0, 3).map((p, i) => (
+                  <div
+                    key={i}
+                    className="size-6 rounded-full border-2 border-white bg-purple-600 flex items-center justify-center text-white text-[10px] font-bold overflow-hidden"
+                    title={p.name}
+                  >
+                    {p.image
+                      ? <img src={p.image} alt={p.name} className="w-full h-full object-cover" />
+                      : p.name.charAt(0).toUpperCase()}
+                  </div>
+                ))}
+                {(activeConference.participants ?? []).length > 3 && (
+                  <div className="size-6 rounded-full border-2 border-white bg-gray-400 flex items-center justify-center text-white text-[10px] font-bold">
+                    +{(activeConference.participants ?? []).length - 3}
+                  </div>
+                )}
+              </div>
+              <span className="text-sm font-medium text-green-800">
+                {inConference
+                  ? `You're in the conference · ${activeConference.participants?.length ?? 1} participant${(activeConference.participants?.length ?? 1) !== 1 ? "s" : ""}`
+                  : `${activeConference.startedByName} started a video conference · ${activeConference.participants?.length ?? 1} joined`}
+              </span>
+            </div>
           </div>
-          <button
-            onClick={() => setInConference(true)}
-            className="flex items-center gap-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold px-3 py-1.5 rounded-full transition-colors"
-          >
-            <Video className="size-3" />
-            Join
-          </button>
-        </div>
-      )}
-
-      {activeConference && inConference && (
-        <div className="bg-green-50 border-b border-green-200 px-4 py-2 flex items-center gap-2">
-          <div className="size-2 rounded-full bg-green-500 animate-pulse" />
-          <span className="text-sm font-medium text-green-800">You are in a live conference</span>
+          {!inConference && (
+            <button
+              onClick={() => setInConference(true)}
+              className="flex items-center gap-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold px-3 py-1.5 rounded-full transition-colors flex-shrink-0"
+            >
+              <Video className="size-3" />
+              Join
+            </button>
+          )}
         </div>
       )}
 
@@ -112,6 +130,8 @@ const ChannelIdPage = () => {
           roomName={`channel-${channelId}`}
           userName={currentUser.name ?? currentUser.email ?? "Member"}
           channelName={channel.name}
+          channelId={channelId}
+          workspaceId={workspaceId}
           onClose={handleLeaveConference}
         />
       )}

@@ -114,6 +114,11 @@ const schema = defineSchema({
     workspaceId: v.id("workspaces"),
     startedByMemberId: v.id("members"),
     startedByName: v.string(),
+    participants: v.optional(v.array(v.object({
+      memberId: v.id("members"),
+      name: v.string(),
+      image: v.optional(v.string()),
+    }))),
   })
     .index("by_channel_id", ["channelId"])
     .index("by_workspace_id", ["workspaceId"]),

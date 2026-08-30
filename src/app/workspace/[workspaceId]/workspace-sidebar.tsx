@@ -15,6 +15,8 @@ import { useCreateChannelModal } from "@/features/channels/store/use-create-chan
 import { useChannelId } from "@/hooks/use-channel-id";
 import { useMemberId } from "@/hooks/use-member-id";
 import { Input } from "@/components/ui/input";
+import { useQuery } from "convex/react";
+import { api } from "../../../../convex/_generated/api";
 
 
 export const WorkspaceSidebar = () => {
@@ -26,6 +28,8 @@ export const WorkspaceSidebar = () => {
     const { data: members, isLoading: membersLoading } = useGetMembers({ workspaceId });
     const [_open, setOpen] = useCreateChannelModal();
     const memberId = useMemberId();
+    const activeConferences = useQuery(api.activeConferences.getActiveForWorkspace, { workspaceId });
+    const liveChannelIds = new Set((activeConferences ?? []).map(c => c.channelId));
     const [filterQuery, setFilterQuery] = useState("");
     const [filterFocused, setFilterFocused] = useState(false);
     const filterInputRef = useRef<HTMLInputElement>(null);
@@ -119,6 +123,7 @@ export const WorkspaceSidebar = () => {
                             label={item.name}
                             id={item._id}
                             variant={channelId === item._id ? "active" : "default"}
+                            hasLiveConference={liveChannelIds.has(item._id)}
                         />
 
                     ))}
