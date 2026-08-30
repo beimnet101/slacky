@@ -1,3 +1,4 @@
+"use client";
 
 import { Doc, Id } from "../../convex/_generated/dataModel"
 import dynamic from "next/dynamic";
@@ -13,7 +14,7 @@ import { Hint } from "./ui/hint";
 import { Avatar, AvatarImage, AvatarFallback } from "./ui/avatar";
 import { Thumbnail, VideoPlayer } from "./thumbnail";
 import { FileAttachment } from "./file-attachment";
-import { FileText, Pencil } from "lucide-react";
+import { FileText, Pencil, Loader2 } from "lucide-react";
 import { Toolbar } from "./toolbar";
 import { useUpdateMessage } from "@/features/messages/api/use-update-message";
 import { useRemoveMessage } from "@/features/messages/api/use-remove-message";
@@ -27,6 +28,8 @@ import { useToggleReaction } from "@/features/reactions/api/use-toggle-reactions
 import { Reactions } from "./reactions";
 import { usePanel } from "@/hooks/use-panel";
 import { ThreadBar } from "./thread-bar";
+import { useAction, useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
 
 interface MessageProps {
     id: Id<"messages">;
@@ -105,6 +108,9 @@ export const Message = (
     const workspaceId = useWorkspaceId();
     const { mutate: createMessage } = useCreateMessage();
 
+    const workspaceLinks = useQuery(api.jira.getWorkspaceLinks, jiraConnected ? { workspaceId } : "skip");
+    const assignIssue = useAction(api.jira.assignIssue);
+
 
     const { mutate: updateMessage, isPending: isUpdatingMessage } = useUpdateMessage();
     const { mutate: removeMessage, isPending: isRemovingMessage } = useRemoveMessage();
@@ -113,19 +119,61 @@ export const Message = (
 
     const [editingCanvas, setEditingCanvas] = useState<{ _id: string; title: string; content: string; isStarred?: boolean } | null>(null);
     const [showJiraModal, setShowJiraModal] = useState(false);
+    const [assigningKey, setAssigningKey] = useState<string | null>(null);
+
+    const handleAssignSuggestion = async (issueKey: string, jiraAccountId: string, jiraDisplayName: string) => {
+        setAssigningKey(issueKey + jiraAccountId);
+        try {
+            await assignIssue({ workspaceId, issueKey, jiraAccountId });
+            toast.success(`Assigned ${issueKey} to ${jiraDisplayName}`);
+        } catch (err: any) {
+            toast.error(err?.message ?? "Failed to assign issue");
+        } finally {
+            setAssigningKey(null);
+        }
+    };
+
+    const AssignSuggestionBar = assignSuggestions.length > 0 ? (
+        <div className="flex flex-col gap-1 mt-1">
+            {assignSuggestions.map((s) => (
+                <div
+                    key={s.issueKey + s.jiraAccountId}
+                    className="flex items-center gap-2 rounded-md bg-blue-50 border border-blue-200 px-3 py-1.5 text-sm"
+                >
+                    <div className="size-4 bg-blue-600 rounded flex items-center justify-center text-white font-bold text-[10px] flex-shrink-0">
+                        J
+                    </div>
+                    <span className="text-blue-800 font-mono text-xs font-semibold">{s.issueKey}</span>
+                    <span className="text-blue-700 text-xs">→</span>
+                    <span className="text-blue-800 text-xs">{s.jiraDisplayName}</span>
+                    <span className="text-muted-foreground text-xs">Assign?</span>
+                    <button
+                        onClick={() => handleAssignSuggestion(s.issueKey, s.jiraAccountId, s.jiraDisplayName)}
+                        disabled={assigningKey === s.issueKey + s.jiraAccountId}
+                        className="ml-auto px-2 py-0.5 rounded bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 disabled:opacity-50 flex items-center gap-1"
+                    >
+                        {assigningKey === s.issueKey + s.jiraAccountId ? (
+                            <Loader2 className="size-3 animate-spin" />
+                        ) : null}
+                        Assign
+                    </button>
+                </div>
+            ))}
+        </div>
+    ) : null;
 
     // Detect Jira browse URLs in message body
     const jiraIssueKeys: { issueKey: string }[] = [];
+    const mentionedNames: string[] = [];
     try {
-        const bodyText = (() => {
-            try {
-                const delta = JSON.parse(body);
-                if (delta?.ops) {
-                    return delta.ops.map((op: any) => (typeof op.insert === "string" ? op.insert : "")).join("");
-                }
-            } catch {}
-            return body;
+        const parsedBody = (() => {
+            try { return JSON.parse(body); } catch { return null; }
         })();
+        const bodyText = parsedBody?.ops
+            ? parsedBody.ops.map((op: any) => (typeof op.insert === "string" ? op.insert : "")).join("")
+            : body;
+
+        // Collect Jira issue keys from URLs
         const jiraUrlRegex = /https:\/\/[a-zA-Z0-9-]+\.atlassian\.net\/browse\/([A-Z][A-Z0-9]+-\d+)/g;
         let match: RegExpExecArray | null;
         while ((match = jiraUrlRegex.exec(bodyText)) !== null) {
@@ -134,7 +182,55 @@ export const Message = (
                 jiraIssueKeys.push({ issueKey });
             }
         }
+
+        // Collect mentioned names from Quill delta mention objects
+        if (parsedBody?.ops) {
+            for (const op of parsedBody.ops) {
+                if (typeof op.insert === "object" && op.insert?.mention) {
+                    const val: string = op.insert.mention.value ?? op.insert.mention.label ?? "";
+                    if (val && !mentionedNames.includes(val.toLowerCase())) {
+                        mentionedNames.push(val.toLowerCase());
+                    }
+                }
+            }
+        }
+        // Fallback: scan for @Name patterns in plain text
+        const atMentionRegex = /@([A-Za-z0-9_.\-]+)/g;
+        let atMatch: RegExpExecArray | null;
+        while ((atMatch = atMentionRegex.exec(bodyText)) !== null) {
+            const name = atMatch[1].toLowerCase();
+            if (!mentionedNames.includes(name)) {
+                mentionedNames.push(name);
+            }
+        }
     } catch {}
+
+    // Compute assign suggestions: (issueKey, jiraLink) pairs where a mentioned name matches a linked member
+    const assignSuggestions: Array<{ issueKey: string; jiraAccountId: string; jiraDisplayName: string; jiraAvatarUrl?: string }> = [];
+    if (jiraConnected && jiraIssueKeys.length > 0 && mentionedNames.length > 0 && workspaceLinks) {
+        // We need to cross-reference mentionedNames with workspace members' names who have Jira linked
+        // workspaceLinks has memberId but not user.name — we'll store the suggestions after member name lookup
+        // For now push all linked members whose jiraDisplayName or jiraEmail matches any mentioned name
+        for (const link of workspaceLinks) {
+            const nameLower = link.jiraDisplayName.toLowerCase();
+            const emailLower = link.jiraEmail.toLowerCase();
+            const matched = mentionedNames.some(
+                (n) => nameLower.includes(n) || n.includes(nameLower.split(" ")[0]) || emailLower.startsWith(n)
+            );
+            if (matched) {
+                for (const { issueKey } of jiraIssueKeys) {
+                    if (!assignSuggestions.find((s) => s.issueKey === issueKey && s.jiraAccountId === link.jiraAccountId)) {
+                        assignSuggestions.push({
+                            issueKey,
+                            jiraAccountId: link.jiraAccountId,
+                            jiraDisplayName: link.jiraDisplayName,
+                            jiraAvatarUrl: link.jiraAvatarUrl,
+                        });
+                    }
+                }
+            }
+        }
+    }
 
     const handleSendCanvas = async (canvasId: Id<"canvases">) => {
         if (!channelId && !conversationId) return;
@@ -287,6 +383,7 @@ export const Message = (
                                 {jiraIssueKeys.map(({ issueKey }) => (
                                     <JiraIssueCard key={issueKey} issueKey={issueKey} workspaceId={workspaceId} />
                                 ))}
+                                {AssignSuggestionBar}
                                 {updatedAt ? (
                                     <span className="text-xs text-muted-foreground">
                                         (edited)
@@ -408,6 +505,7 @@ export const Message = (
                                 {jiraIssueKeys.map(({ issueKey }) => (
                                     <JiraIssueCard key={issueKey} issueKey={issueKey} workspaceId={workspaceId} />
                                 ))}
+                                {AssignSuggestionBar}
                                 {updatedAt ? (
                                     <span className="text-xs text-muted-foreground">(edited)</span>
                                 ) : null}

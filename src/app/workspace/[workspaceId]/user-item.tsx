@@ -37,6 +37,7 @@ interface UserItemProps{
   label?:string;
   image?:string;
   variant?:VariantProps<typeof userItemVariants >["variant"];
+  hasJira?: boolean;
 
 
  };
@@ -45,13 +46,14 @@ id,
  label="member",
  image,
  variant,
- 
+ hasJira,
+
 
 }:UserItemProps)=>{
     const workspacId=useWorkspaceId();
     const avatarFallback=label.charAt(0).toUpperCase();
    return(
-    
+
     <Button
     variant="transparent"
     className={cn(userItemVariants({variant:variant}))}
@@ -69,6 +71,11 @@ id,
 
     </Avatar>
      <span className="text-sm truncate">{label}</span>
+     {hasJira && (
+       <span className="ml-auto flex-shrink-0 size-4 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-[9px]">
+         J
+       </span>
+     )}
     </Link>
 
     </Button>

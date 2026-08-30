@@ -30,6 +30,8 @@ export const WorkspaceSidebar = () => {
     const memberId = useMemberId();
     const activeConferences = useQuery(api.activeConferences.getActiveForWorkspace, { workspaceId });
     const liveChannelIds = new Set((activeConferences ?? []).map(c => c.channelId));
+    const workspaceLinks = useQuery(api.jira.getWorkspaceLinks, { workspaceId });
+    const jiraLinkedMemberIds = new Set((workspaceLinks ?? []).map((l) => l.memberId));
     const [filterQuery, setFilterQuery] = useState("");
     const [filterFocused, setFilterFocused] = useState(false);
     const filterInputRef = useRef<HTMLInputElement>(null);
@@ -150,6 +152,7 @@ export const WorkspaceSidebar = () => {
                                 label={item.user.name}
                                 image={item.user.image}
                                 variant={item._id === memberId ? "active" : "default"}
+                                hasJira={jiraLinkedMemberIds.has(item._id)}
                             />
                         )
                     })}

@@ -1,7 +1,9 @@
+"use client";
+
 import { Button } from "@/components/ui/button";
 import { Id } from "../../../../../convex/_generated/dataModel"
 import { useGetMember } from "../api/use-get-member";
-import { AlertTriangle, ChevronDownIcon, MailIcon, Verified, XIcon } from "lucide-react";
+import { AlertTriangle, ChevronDownIcon, MailIcon, Verified, XIcon, Unlink } from "lucide-react";
 import { Loader } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Separator } from "@/components/ui/separator";
@@ -14,6 +16,15 @@ import { toast, Toaster } from "sonner";
 import { useConfirm } from "@/hooks/use-confirm";
 import { useRouter } from "next/navigation";
 import VerifiedIcon from '@mui/icons-material/Verified';
+import { useQuery, useMutation } from "convex/react";
+import { api } from "../../../../convex/_generated/api";
+import { useState } from "react";
+import dynamic from "next/dynamic";
+
+const JiraLinkAccountModal = dynamic(
+    () => import("@/components/jira-link-account-modal").then((m) => m.JiraLinkAccountModal),
+    { ssr: false }
+);
 
 
 import {
@@ -40,6 +51,28 @@ export const Profile = ({ memberId, onClose }: ProfileProps) => {
     const { data: member, isLoading: isLoadingMember } = useGetMember({ id: memberId });
     const { mutate: updateMember, isPending: isUpdatingMember } = useUpdateMember();
     const { mutate: removeMember, isPending: isRemovingMember } = useRemoveMember();
+
+    const jiraConnection = useQuery(api.jira.getConnection, { workspaceId });
+    const workspaceLinks = useQuery(api.jira.getWorkspaceLinks, { workspaceId });
+    const myLink = useQuery(api.jira.getMyLink, { workspaceId });
+    const unlinkAccount = useMutation(api.jira.unlinkMemberAccount);
+    const [showJiraLinkModal, setShowJiraLinkModal] = useState(false);
+    const [unlinking, setUnlinking] = useState(false);
+
+    const isOwnProfile = currentMember?._id === memberId;
+    const profileJiraLink = workspaceLinks?.find((l) => l.memberId === memberId);
+
+    const handleUnlinkJira = async () => {
+        setUnlinking(true);
+        try {
+            await unlinkAccount({ workspaceId });
+            toast.success("Jira account unlinked");
+        } catch (err: any) {
+            toast.error(err?.message ?? "Failed to unlink");
+        } finally {
+            setUnlinking(false);
+        }
+    };
 
 
     const [LeaveDialog, confirmLeave] = useConfirm("Leave workspace", "Are you sure you want to leave this workspace");
@@ -269,7 +302,70 @@ export const Profile = ({ memberId, onClose }: ProfileProps) => {
 
                 </div>
 
+                {jiraConnection && (
+                    <>
+                        <Separator />
+                        <div className="flex flex-col p-4 gap-3">
+                            <div className="flex items-center gap-2">
+                                <div className="size-5 bg-blue-600 rounded flex items-center justify-center text-white font-bold text-xs flex-shrink-0">
+                                    J
+                                </div>
+                                <p className="text-sm font-bold">Jira</p>
+                            </div>
+
+                            {profileJiraLink ? (
+                                <div className="flex items-center gap-3">
+                                    <Avatar className="size-8">
+                                        <AvatarImage src={profileJiraLink.jiraAvatarUrl} />
+                                        <AvatarFallback className="bg-blue-200 text-blue-800 text-xs">
+                                            {profileJiraLink.jiraDisplayName.charAt(0)}
+                                        </AvatarFallback>
+                                    </Avatar>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium truncate">{profileJiraLink.jiraDisplayName}</p>
+                                        <p className="text-xs text-muted-foreground truncate">{profileJiraLink.jiraEmail}</p>
+                                    </div>
+                                    {isOwnProfile && (
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={handleUnlinkJira}
+                                            disabled={unlinking}
+                                            className="text-red-500 hover:text-red-700 hover:bg-red-50 h-7 px-2"
+                                        >
+                                            {unlinking ? (
+                                                <Loader className="size-3 animate-spin" />
+                                            ) : (
+                                                <Unlink className="size-3 mr-1" />
+                                            )}
+                                            Unlink
+                                        </Button>
+                                    )}
+                                </div>
+                            ) : isOwnProfile ? (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setShowJiraLinkModal(true)}
+                                    className="w-full text-blue-600 border-blue-200 hover:bg-blue-50"
+                                >
+                                    Connect Jira account
+                                </Button>
+                            ) : (
+                                <p className="text-sm text-muted-foreground">No Jira account linked</p>
+                            )}
+                        </div>
+                    </>
+                )}
+
             </div>
+
+            {showJiraLinkModal && (
+                <JiraLinkAccountModal
+                    workspaceId={workspaceId}
+                    onClose={() => setShowJiraLinkModal(false)}
+                />
+            )}
         </>
 
     );

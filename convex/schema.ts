@@ -149,6 +149,16 @@ const schema = defineSchema({
     notificationChannelId: v.optional(v.id("channels")),
     connectedBy: v.id("members"),
   }).index("by_workspace", ["workspaceId"]),
+
+  jiraMemberLinks: defineTable({
+    workspaceId: v.id("workspaces"),
+    memberId: v.id("members"),
+    jiraAccountId: v.string(),
+    jiraEmail: v.string(),
+    jiraDisplayName: v.string(),
+    jiraAvatarUrl: v.optional(v.string()),
+  }).index("by_workspace_member", ["workspaceId", "memberId"])
+    .index("by_workspace", ["workspaceId"]),
 });
 
 

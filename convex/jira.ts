@@ -13,6 +13,46 @@ function cleanDomain(domain: string) {
 
 // ==================== Queries ====================
 
+export const getMyLink = query({
+    args: { workspaceId: v.id("workspaces") },
+    handler: async (ctx, args) => {
+        const userId = await auth.getUserId(ctx);
+        if (!userId) return null;
+        const member = await ctx.db
+            .query("members")
+            .withIndex("by_workspace_id_user_id", (q) =>
+                q.eq("workspaceId", args.workspaceId).eq("userId", userId)
+            )
+            .unique();
+        if (!member) return null;
+        return await ctx.db
+            .query("jiraMemberLinks")
+            .withIndex("by_workspace_member", (q) =>
+                q.eq("workspaceId", args.workspaceId).eq("memberId", member._id)
+            )
+            .unique();
+    },
+});
+
+export const getWorkspaceLinks = query({
+    args: { workspaceId: v.id("workspaces") },
+    handler: async (ctx, args) => {
+        const userId = await auth.getUserId(ctx);
+        if (!userId) return [];
+        const links = await ctx.db
+            .query("jiraMemberLinks")
+            .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
+            .collect();
+        return links.map((l) => ({
+            memberId: l.memberId,
+            jiraAccountId: l.jiraAccountId,
+            jiraDisplayName: l.jiraDisplayName,
+            jiraAvatarUrl: l.jiraAvatarUrl,
+            jiraEmail: l.jiraEmail,
+        }));
+    },
+});
+
 export const getConnection = query({
     args: { workspaceId: v.id("workspaces") },
     handler: async (ctx, args) => {
@@ -31,6 +71,75 @@ export const getConnection = query({
 });
 
 // ==================== Mutations ====================
+
+export const linkMemberAccount = mutation({
+    args: {
+        workspaceId: v.id("workspaces"),
+        jiraAccountId: v.string(),
+        jiraEmail: v.string(),
+        jiraDisplayName: v.string(),
+        jiraAvatarUrl: v.optional(v.string()),
+    },
+    handler: async (ctx, args) => {
+        const userId = await auth.getUserId(ctx);
+        if (!userId) throw new Error("Unauthorized");
+        const member = await ctx.db
+            .query("members")
+            .withIndex("by_workspace_id_user_id", (q) =>
+                q.eq("workspaceId", args.workspaceId).eq("userId", userId)
+            )
+            .unique();
+        if (!member) throw new Error("Unauthorized");
+        const existing = await ctx.db
+            .query("jiraMemberLinks")
+            .withIndex("by_workspace_member", (q) =>
+                q.eq("workspaceId", args.workspaceId).eq("memberId", member._id)
+            )
+            .unique();
+        if (existing) {
+            await ctx.db.patch(existing._id, {
+                jiraAccountId: args.jiraAccountId,
+                jiraEmail: args.jiraEmail,
+                jiraDisplayName: args.jiraDisplayName,
+                jiraAvatarUrl: args.jiraAvatarUrl,
+            });
+            return existing._id;
+        } else {
+            return await ctx.db.insert("jiraMemberLinks", {
+                workspaceId: args.workspaceId,
+                memberId: member._id,
+                jiraAccountId: args.jiraAccountId,
+                jiraEmail: args.jiraEmail,
+                jiraDisplayName: args.jiraDisplayName,
+                jiraAvatarUrl: args.jiraAvatarUrl,
+            });
+        }
+    },
+});
+
+export const unlinkMemberAccount = mutation({
+    args: { workspaceId: v.id("workspaces") },
+    handler: async (ctx, args) => {
+        const userId = await auth.getUserId(ctx);
+        if (!userId) throw new Error("Unauthorized");
+        const member = await ctx.db
+            .query("members")
+            .withIndex("by_workspace_id_user_id", (q) =>
+                q.eq("workspaceId", args.workspaceId).eq("userId", userId)
+            )
+            .unique();
+        if (!member) throw new Error("Unauthorized");
+        const existing = await ctx.db
+            .query("jiraMemberLinks")
+            .withIndex("by_workspace_member", (q) =>
+                q.eq("workspaceId", args.workspaceId).eq("memberId", member._id)
+            )
+            .unique();
+        if (existing) {
+            await ctx.db.delete(existing._id);
+        }
+    },
+});
 
 export const saveConnection = mutation({
     args: {
@@ -425,5 +534,66 @@ export const applyTransition = action({
         );
         if (!resp.ok) throw new Error(`Failed to apply transition: ${resp.status}`);
         return { success: true };
+    },
+});
+
+export const assignIssue = action({
+    args: {
+        workspaceId: v.id("workspaces"),
+        issueKey: v.string(),
+        jiraAccountId: v.string(),
+    },
+    handler: async (ctx, args): Promise<{ success: boolean }> => {
+        const conn = await ctx.runQuery(api.jiraHelpers.getConnectionInternal, { workspaceId: args.workspaceId });
+        if (!conn) throw new Error("Jira not connected");
+        const resp = await fetch(
+            `https://${conn.domain}/rest/api/3/issue/${encodeURIComponent(args.issueKey)}`,
+            {
+                method: "PUT",
+                headers: {
+                    Authorization: jiraAuthHeader(conn.email, conn.apiToken),
+                    Accept: "application/json",
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ fields: { assignee: { accountId: args.jiraAccountId } } }),
+            }
+        );
+        if (!resp.ok) {
+            const text = await resp.text();
+            throw new Error(`Failed to assign issue: ${resp.status} ${text}`);
+        }
+        return { success: true };
+    },
+});
+
+export const searchJiraUsers = action({
+    args: {
+        workspaceId: v.id("workspaces"),
+        query: v.string(),
+    },
+    handler: async (ctx, args): Promise<Array<{
+        accountId: string;
+        displayName: string;
+        emailAddress: string;
+        avatarUrl: string;
+    }>> => {
+        const conn = await ctx.runQuery(api.jiraHelpers.getConnectionInternal, { workspaceId: args.workspaceId });
+        if (!conn) throw new Error("Jira not connected");
+        const url = new URL(`https://${conn.domain}/rest/api/3/user/search`);
+        url.searchParams.set("query", args.query);
+        const resp = await fetch(url.toString(), {
+            headers: {
+                Authorization: jiraAuthHeader(conn.email, conn.apiToken),
+                Accept: "application/json",
+            },
+        });
+        if (!resp.ok) throw new Error(`Failed to search users: ${resp.status}`);
+        const data = await resp.json();
+        return (data as any[]).map((u) => ({
+            accountId: u.accountId as string,
+            displayName: u.displayName as string,
+            emailAddress: (u.emailAddress ?? "") as string,
+            avatarUrl: (u.avatarUrls?.["48x48"] ?? u.avatarUrls?.["32x32"] ?? "") as string,
+        }));
     },
 });
