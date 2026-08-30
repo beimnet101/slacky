@@ -1,39 +1,39 @@
 "use client";
 import { useEffect, useRef, useState, useCallback } from "react";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
 import { X, Star, Send } from "lucide-react";
 
 interface CanvasEditorModalProps {
   canvasId: Id<"canvases">;
+  initialTitle: string;
+  initialContent: string;
+  initialIsStarred?: boolean;
   onClose: () => void;
-  onSend?: () => void; // called after saving to send as a new message
+  onSend?: () => void;
 }
 
-export const CanvasEditorModal = ({ canvasId, onClose, onSend }: CanvasEditorModalProps) => {
-  const canvas = useQuery(api.canvases.getById, { id: canvasId });
+export const CanvasEditorModal = ({
+  canvasId,
+  initialTitle,
+  initialContent,
+  initialIsStarred = false,
+  onClose,
+  onSend,
+}: CanvasEditorModalProps) => {
   const updateCanvas = useMutation(api.canvases.update);
 
-  const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
+  const [title, setTitle] = useState(initialTitle);
+  const [content, setContent] = useState(initialContent);
+  const [isStarred, setIsStarred] = useState(initialIsStarred);
   const [saved, setSaved] = useState(true);
   const saveTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const initializedRef = useRef(false);
   const latestTitle = useRef(title);
   const latestContent = useRef(content);
 
   useEffect(() => { latestTitle.current = title; }, [title]);
   useEffect(() => { latestContent.current = content; }, [content]);
-
-  // Populate once canvas loads
-  useEffect(() => {
-    if (canvas && !initializedRef.current) {
-      initializedRef.current = true;
-      setTitle(canvas.title ?? "");
-      setContent(canvas.content ?? "");
-    }
-  }, [canvas]);
 
   const scheduleSave = useCallback((newTitle: string, newContent: string) => {
     setSaved(false);
@@ -56,7 +56,7 @@ export const CanvasEditorModal = ({ canvasId, onClose, onSend }: CanvasEditorMod
     scheduleSave(title, v);
   };
 
-  // Flush any pending save on unmount
+  // Flush pending save on unmount
   useEffect(() => {
     return () => {
       if (saveTimerRef.current) {
@@ -67,11 +67,7 @@ export const CanvasEditorModal = ({ canvasId, onClose, onSend }: CanvasEditorMod
   }, [canvasId, updateCanvas]);
 
   const handleSend = async () => {
-    // Flush pending save first
-    if (saveTimerRef.current) {
-      clearTimeout(saveTimerRef.current);
-      saveTimerRef.current = null;
-    }
+    if (saveTimerRef.current) { clearTimeout(saveTimerRef.current); saveTimerRef.current = null; }
     await updateCanvas({ id: canvasId, title, content });
     setSaved(true);
     onSend?.();
@@ -79,25 +75,10 @@ export const CanvasEditorModal = ({ canvasId, onClose, onSend }: CanvasEditorMod
   };
 
   const toggleStar = async () => {
-    if (!canvas) return;
-    await updateCanvas({ id: canvasId, isStarred: !canvas.isStarred });
+    const next = !isStarred;
+    setIsStarred(next);
+    await updateCanvas({ id: canvasId, isStarred: next });
   };
-
-  if (canvas === undefined) {
-    return (
-      <div className="fixed inset-0 z-50 bg-white flex items-center justify-center">
-        <div className="size-6 border-2 border-slate-300 border-t-slate-700 rounded-full animate-spin" />
-      </div>
-    );
-  }
-
-  if (canvas === null) {
-    return (
-      <div className="fixed inset-0 z-50 bg-white flex items-center justify-center">
-        <p className="text-slate-500">Canvas not found</p>
-      </div>
-    );
-  }
 
   return (
     <div className="fixed inset-0 z-50 bg-white flex flex-col">
@@ -115,12 +96,8 @@ export const CanvasEditorModal = ({ canvasId, onClose, onSend }: CanvasEditorMod
             {saved ? "Saved" : "Saving..."}
           </span>
 
-          <button
-            onClick={toggleStar}
-            className="p-1.5 rounded hover:bg-slate-100 transition-colors"
-            title={canvas.isStarred ? "Unstar" : "Star"}
-          >
-            <Star className={`size-4 ${canvas.isStarred ? "fill-yellow-400 text-yellow-400" : "text-slate-400"}`} />
+          <button onClick={toggleStar} className="p-1.5 rounded hover:bg-slate-100 transition-colors">
+            <Star className={`size-4 ${isStarred ? "fill-yellow-400 text-yellow-400" : "text-slate-400"}`} />
           </button>
 
           {onSend && (
@@ -133,10 +110,7 @@ export const CanvasEditorModal = ({ canvasId, onClose, onSend }: CanvasEditorMod
             </button>
           )}
 
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded hover:bg-slate-100 transition-colors text-slate-500"
-          >
+          <button onClick={onClose} className="p-1.5 rounded hover:bg-slate-100 transition-colors text-slate-500">
             <X className="size-4" />
           </button>
         </div>

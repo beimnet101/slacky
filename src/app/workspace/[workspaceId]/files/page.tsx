@@ -594,7 +594,7 @@ export default function FilesPage() {
   const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [activeTab, setActiveTab] = useState<ActiveTab>("all");
   const [sharingCanvas, setSharingCanvas] = useState<Canvas | null>(null);
-  const [editingCanvasId, setEditingCanvasId] = useState<Id<"canvases"> | null>(null);
+  const [editingCanvas, setEditingCanvas] = useState<Canvas | null>(null);
 
   const navItems = [
     { id: "all" as ActiveView, label: "All files", icon: FolderOpen },
@@ -649,7 +649,7 @@ export default function FilesPage() {
             currentMemberId={currentMember?._id}
             onOpenTemplateModal={() => setShowTemplateModal(true)}
             onShare={setSharingCanvas}
-            onEdit={(c) => setEditingCanvasId(c._id as Id<"canvases">)}
+            onEdit={(c) => setEditingCanvas(c)}
           />
         )}
         {activeView === "canvases" && (
@@ -659,14 +659,14 @@ export default function FilesPage() {
             setSearch={setSearch}
             onOpenTemplateModal={() => setShowTemplateModal(true)}
             onShare={setSharingCanvas}
-            onEdit={(c) => setEditingCanvasId(c._id as Id<"canvases">)}
+            onEdit={(c) => setEditingCanvas(c)}
           />
         )}
         {activeView === "starred" && (
           <StarredView
             canvases={canvases as Canvas[]}
             onShare={setSharingCanvas}
-            onEdit={(c) => setEditingCanvasId(c._id as Id<"canvases">)}
+            onEdit={(c) => setEditingCanvas(c)}
           />
         )}
       </div>
@@ -686,10 +686,13 @@ export default function FilesPage() {
       />
 
       {/* Canvas editor */}
-      {editingCanvasId && (
+      {editingCanvas && (
         <CanvasEditorModal
-          canvasId={editingCanvasId}
-          onClose={() => setEditingCanvasId(null)}
+          canvasId={editingCanvas._id as Id<"canvases">}
+          initialTitle={editingCanvas.title}
+          initialContent={editingCanvas.content}
+          initialIsStarred={editingCanvas.isStarred}
+          onClose={() => setEditingCanvas(null)}
         />
       )}
     </div>

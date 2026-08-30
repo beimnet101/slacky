@@ -107,7 +107,7 @@ export const Message = (
     const { mutate: toggleReaction, isPending: isTogglingReaction } = useToggleReaction();
     const isPending = isUpdatingMessage || isTogglingReaction;
 
-    const [editingCanvasId, setEditingCanvasId] = useState<Id<"canvases"> | null>(null);
+    const [editingCanvas, setEditingCanvas] = useState<{ _id: string; title: string; content: string; isStarred?: boolean } | null>(null);
 
     const handleSendCanvas = async (canvasId: Id<"canvases">) => {
         if (!channelId && !conversationId) return;
@@ -243,7 +243,7 @@ export const Message = (
                                 )}
                                 {canvas && (
                                     <button
-                                        onClick={() => setEditingCanvasId(canvas._id as Id<"canvases">)}
+                                        onClick={() => setEditingCanvas(canvas)}
                                         className="flex items-start gap-2 border border-slate-200 rounded-lg p-3 my-2 max-w-[360px] bg-white hover:bg-slate-50 transition-colors text-left w-full group/canvas"
                                     >
                                         <div className="flex-shrink-0 w-8 h-8 bg-teal-600/20 rounded flex items-center justify-center mt-0.5">
@@ -291,11 +291,14 @@ export const Message = (
                         />)}
                 </div>
 
-                {editingCanvasId && (
+                {editingCanvas && (
                     <CanvasEditorModal
-                        canvasId={editingCanvasId}
-                        onClose={() => setEditingCanvasId(null)}
-                        onSend={(channelId || conversationId) ? () => handleSendCanvas(editingCanvasId) : undefined}
+                        canvasId={editingCanvas._id as Id<"canvases">}
+                        initialTitle={editingCanvas.title}
+                        initialContent={editingCanvas.content}
+                        initialIsStarred={(editingCanvas as any).isStarred}
+                        onClose={() => setEditingCanvas(null)}
+                        onSend={(channelId || conversationId) ? () => handleSendCanvas(editingCanvas._id as Id<"canvases">) : undefined}
                     />
                 )}
             </>
@@ -352,7 +355,7 @@ export const Message = (
                                 )}
                                 {canvas && (
                                     <button
-                                        onClick={() => setEditingCanvasId(canvas._id as Id<"canvases">)}
+                                        onClick={() => setEditingCanvas(canvas)}
                                         className="flex items-start gap-2 border border-slate-200 rounded-lg p-3 my-2 max-w-[360px] bg-white hover:bg-slate-50 transition-colors text-left w-full group/canvas"
                                     >
                                         <div className="flex-shrink-0 w-8 h-8 bg-teal-600/20 rounded flex items-center justify-center mt-0.5">
