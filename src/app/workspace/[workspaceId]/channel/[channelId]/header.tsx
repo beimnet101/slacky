@@ -28,9 +28,11 @@ import { useCurrentMember } from "@/features/members/api/use-current-member";
 interface HeaderProps {
     title: string;
     onStartConference?: () => void;
+    hasActiveConference?: boolean;
+    conferenceStartedBy?: string;
 }
 
-export const Header = ({ title, onStartConference }: HeaderProps) => {
+export const Header = ({ title, onStartConference, hasActiveConference, conferenceStartedBy }: HeaderProps) => {
 
 
     const router = useRouter();
@@ -103,17 +105,6 @@ export const Header = ({ title, onStartConference }: HeaderProps) => {
 
         <div className="bg-white border-b h-[49px] flex items-center px-4 overflow-hidden">
             <ConfirmDialog />
-            <div className="ml-auto mr-2">
-                <Button
-                    variant="ghost"
-                    size="icon"
-                    className="size-8 text-gray-500 hover:text-gray-800 hover:bg-gray-100"
-                    onClick={onStartConference}
-                    title="Start video conference"
-                >
-                    <Video className="size-4" />
-                </Button>
-            </div>
             <Dialog>
                 <DialogTrigger asChild>
                     <Button
@@ -198,6 +189,24 @@ export const Header = ({ title, onStartConference }: HeaderProps) => {
                 </DialogContent>
 
             </Dialog>
+
+            <div className="ml-auto flex items-center gap-2">
+                {hasActiveConference && (
+                    <div className="flex items-center gap-1.5 bg-green-100 text-green-700 text-xs font-semibold px-2 py-1 rounded-full">
+                        <div className="size-1.5 rounded-full bg-green-500 animate-pulse" />
+                        Live
+                    </div>
+                )}
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    className={`size-8 hover:bg-gray-100 ${hasActiveConference ? "text-green-600" : "text-gray-500 hover:text-gray-800"}`}
+                    onClick={onStartConference}
+                    title={hasActiveConference ? `${conferenceStartedBy} started a conference — click to join` : "Start video conference"}
+                >
+                    <Video className="size-4" />
+                </Button>
+            </div>
         </div>
     )
 }

@@ -66,7 +66,9 @@ const ChannelIdPage = () => {
     <div className="flex flex-col h-full">
       <Header
         title={channel.name}
-        onStartConference={handleStartConference}
+        onStartConference={activeConference ? () => setInConference(true) : handleStartConference}
+        hasActiveConference={!!activeConference}
+        conferenceStartedBy={activeConference?.startedByName}
       />
 
       {/* Live conference banner */}
