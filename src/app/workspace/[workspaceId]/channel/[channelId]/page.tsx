@@ -28,9 +28,9 @@ const ChannelIdPage = () => {
   const { data: currentUser } = useCurrentUser();
   const [inConference, setInConference] = useState(false);
 
-  const activeConference = useQuery(api.conferences.getActive, { channelId });
-  const startConference = useMutation(api.conferences.start);
-  const endConference = useMutation(api.conferences.end);
+  const activeConference = useQuery(api.activeConferences.getActive, { channelId });
+  const startConference = useMutation(api.activeConferences.start);
+  const endConference = useMutation(api.activeConferences.end);
 
   const handleStartConference = async () => {
     await startConference({ channelId, workspaceId });
