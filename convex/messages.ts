@@ -498,7 +498,7 @@ export const countMessagesInMemberConversations = query({
                 .collect(); // Collect new messages
 
             // Count messages belonging to these conversations excluding those sent by the specified member
-            messageCount = messages.filter(msg => msg.memberId === memberId).length;
+            messageCount = messages.filter(msg => msg.memberId !== memberId).length;
              // Total new messages excluding the member's messages
         }
 
