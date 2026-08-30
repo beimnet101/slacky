@@ -400,10 +400,14 @@ export const Message = (
 
             </div>
 
-            {editingCanvasId && (
+            {editingCanvas && (
                 <CanvasEditorModal
-                    canvasId={editingCanvasId}
-                    onClose={() => setEditingCanvasId(null)}
+                    canvasId={editingCanvas._id as Id<"canvases">}
+                    initialTitle={editingCanvas.title}
+                    initialContent={editingCanvas.content}
+                    initialIsStarred={(editingCanvas as any).isStarred}
+                    onClose={() => setEditingCanvas(null)}
+                    onSend={(channelId || conversationId) ? () => handleSendCanvas(editingCanvas._id as Id<"canvases">) : undefined}
                 />
             )}
         </>
