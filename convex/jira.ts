@@ -7,6 +7,10 @@ function jiraAuthHeader(email: string, apiToken: string) {
     return "Basic " + btoa(`${email}:${apiToken}`);
 }
 
+function cleanDomain(domain: string) {
+    return domain.replace(/^https?:\/\//, "").replace(/\/$/, "");
+}
+
 // ==================== Queries ====================
 
 export const getConnection = query({
@@ -48,6 +52,8 @@ export const saveConnection = mutation({
             .unique();
         if (!member || member.role !== "admin") throw new Error("unauthorized");
 
+        const cleanedDomain = args.domain.replace(/^https?:\/\//, "").replace(/\/$/, "");
+
         const existing = await ctx.db
             .query("jiraConnections")
             .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
@@ -55,7 +61,7 @@ export const saveConnection = mutation({
 
         if (existing) {
             await ctx.db.patch(existing._id, {
-                domain: args.domain,
+                domain: cleanedDomain,
                 email: args.email,
                 apiToken: args.apiToken,
                 notificationChannelId: args.notificationChannelId,
@@ -65,7 +71,7 @@ export const saveConnection = mutation({
         } else {
             return await ctx.db.insert("jiraConnections", {
                 workspaceId: args.workspaceId,
-                domain: args.domain,
+                domain: cleanedDomain,
                 email: args.email,
                 apiToken: args.apiToken,
                 notificationChannelId: args.notificationChannelId,
@@ -126,7 +132,8 @@ export const testConnection = action({
         apiToken: v.string(),
     },
     handler: async (_ctx, args): Promise<{ name: string; avatarUrl: string }> => {
-        const resp = await fetch(`https://${args.domain}/rest/api/3/myself`, {
+        const domain = cleanDomain(args.domain);
+        const resp = await fetch(`https://${domain}/rest/api/3/myself`, {
             headers: {
                 Authorization: jiraAuthHeader(args.email, args.apiToken),
                 Accept: "application/json",
