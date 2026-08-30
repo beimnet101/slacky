@@ -9,11 +9,13 @@ import { Header } from "./header";
 import { ChatInput } from "./chat-input";
 import { useGetMessages } from "@/features/messages/api/use-get-messages";
 import { MessageList } from "@/components/message-list";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useCurrentUser } from "@/features/auth/api/use-current-user";
 import { useMutation, useQuery } from "convex/react";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { api } from "../../../../../../convex/_generated/api";
 import dynamic from "next/dynamic";
+import { useCurrentMember } from "@/features/members/api/use-current-member";
 
 const VideoConferenceModal = dynamic(
   () => import("@/components/video-conference-modal").then(m => m.VideoConferenceModal),
@@ -27,14 +29,31 @@ const ChannelIdPage = () => {
   const { data: channel, isLoading: channelLoading } = useGetChannel({ id: channelId });
   const { data: currentUser } = useCurrentUser();
   const [inConference, setInConference] = useState(false);
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
 
   const activeConference = useQuery(api.activeConferences.getActive, { channelId });
+
+  // Auto-join conference when ?join=1 is in the URL
+  useEffect(() => {
+    if (searchParams.get("join") === "1" && activeConference) {
+      setInConference(true);
+      // Remove the query param without re-render
+      router.replace(pathname, { scroll: false });
+    }
+  }, [searchParams, activeConference]); // eslint-disable-line react-hooks/exhaustive-deps
   const startConference = useMutation(api.activeConferences.start);
   const endConference = useMutation(api.activeConferences.end);
+  const createMessage = useMutation(api.messages.create);
+  const { data: currentMember } = useCurrentMember({ workspaceId });
 
   const handleStartConference = async () => {
     await startConference({ channelId, workspaceId });
     setInConference(true);
+    const joinUrl = `${window.location.origin}/workspace/${workspaceId}/channel/${channelId}?join=1`;
+    const body = JSON.stringify({ ops: [{ insert: "📹 A video meeting has started.  " }, { insert: "Join meeting", attributes: { link: joinUrl } }, { insert: "\n" }] });
+    await createMessage({ body, workspaceId, channelId }).catch(() => {});
   };
 
   const handleLeaveConference = async () => {

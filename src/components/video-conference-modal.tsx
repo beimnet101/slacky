@@ -14,7 +14,7 @@ import {
 } from "@livekit/components-react";
 import { Track } from "livekit-client";
 import { ConnectionState } from "livekit-client";
-import { Loader, Users, X } from "lucide-react";
+import { Loader, Users, X, Link2, Check } from "lucide-react";
 import { Id } from "../../convex/_generated/dataModel";
 
 interface VideoConferenceModalProps {
@@ -26,7 +26,15 @@ interface VideoConferenceModalProps {
   onClose: () => void;
 }
 
-function ConferenceRoom({ channelName, onClose }: { channelName?: string; onClose: () => void }) {
+function ConferenceRoom({ channelName, inviteUrl, onClose }: { channelName?: string; inviteUrl?: string; onClose: () => void }) {
+  const [copied, setCopied] = useState(false);
+  const copyLink = () => {
+    if (!inviteUrl) return;
+    navigator.clipboard.writeText(inviteUrl).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
   const tracks = useTracks(
     [
       { source: Track.Source.Camera, withPlaceholder: true },
@@ -55,6 +63,16 @@ function ConferenceRoom({ channelName, onClose }: { channelName?: string; onClos
             <Users className="size-4" />
             <span>{participants.length} participant{participants.length !== 1 ? "s" : ""}</span>
           </div>
+          {inviteUrl && (
+            <button
+              onClick={copyLink}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-gray-300 hover:text-white text-xs font-medium transition-colors"
+              title="Copy invite link"
+            >
+              {copied ? <Check className="size-3.5 text-green-400" /> : <Link2 className="size-3.5" />}
+              {copied ? "Copied!" : "Copy link"}
+            </button>
+          )}
           <button
             onClick={onClose}
             className="size-7 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-gray-400 hover:text-white transition-colors"
@@ -172,7 +190,11 @@ export const VideoConferenceModal = ({
       data-lk-theme="default"
       style={{ height: "100dvh" }}
     >
-      <ConferenceRoom channelName={channelName} onClose={handleLeave} />
+      <ConferenceRoom
+        channelName={channelName}
+        inviteUrl={channelId && workspaceId ? `${typeof window !== "undefined" ? window.location.origin : ""}/workspace/${workspaceId}/channel/${channelId}?join=1` : undefined}
+        onClose={handleLeave}
+      />
     </LiveKitRoom>
   );
 };
