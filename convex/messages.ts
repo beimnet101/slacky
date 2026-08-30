@@ -217,6 +217,9 @@ export const getById = query({
             video: message.video
                 ? await ctx.storage.getUrl(message.video)
                 : undefined,
+            file: message.fileId
+                ? await ctx.storage.getUrl(message.fileId)
+                : undefined,
             canvas: message.canvasId
                 ? await ctx.db.get(message.canvasId)
                 : undefined,
@@ -287,6 +290,8 @@ export const get = query({
                             ? await ctx.storage.getUrl(message.image) : undefined;
                         const video = message.video
                             ? await ctx.storage.getUrl(message.video) : undefined;
+                        const file = message.fileId
+                            ? await ctx.storage.getUrl(message.fileId) : undefined;
                         const canvas = message.canvasId
                             ? await ctx.db.get(message.canvasId) : undefined;
 
@@ -326,6 +331,7 @@ export const get = query({
                             ...message,
                             image,
                             video,
+                            file,
                             canvas,
                             member,
                             user,
@@ -359,6 +365,8 @@ export const create = mutation({
         body: v.string(),
         image: v.optional(v.id(("_storage"))),
         video: v.optional(v.id("_storage")),
+        fileId: v.optional(v.id("_storage")),
+        fileName: v.optional(v.string()),
         canvasId: v.optional(v.id("canvases")),
         workspaceId: v.id("workspaces"),
         channelId: v.optional(v.id("channels")),
@@ -394,6 +402,8 @@ export const create = mutation({
             body: args.body,
             image: args.image,
             video: args.video,
+            fileId: args.fileId,
+            fileName: args.fileName,
             canvasId: args.canvasId,
             workspaceId: args.workspaceId,
             conversationId: _conversationId,

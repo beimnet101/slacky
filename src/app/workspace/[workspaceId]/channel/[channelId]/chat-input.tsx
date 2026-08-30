@@ -7,6 +7,7 @@ import { useChannelId } from "@/hooks/use-channel-id";
 import { toast } from "sonner";
 import { useGenerateUploadUrl } from "@/features/upload/api/use-generate-upload-url";
 import { Id } from "../../../../../../convex/_generated/dataModel";
+import { useGetCanvases } from "@/features/canvases/api/use-get-canvases";
 
 const Editor = dynamic(() => import("@/components/editor"), { ssr: false });
 
@@ -21,6 +22,9 @@ type CreateMessageValues = {
   body: string;
   image?: Id<"_storage"> | undefined;
   video?: Id<"_storage"> | undefined;
+  fileId?: Id<"_storage"> | undefined;
+  fileName?: string | undefined;
+  canvasId?: Id<"canvases"> | undefined;
 }
 
 
@@ -34,23 +38,22 @@ export const ChatInput = ({
 
   const editorRef = useRef<Quill | null>(null);
 
-
-
   const workspaceId = useWorkspaceId();
   const channelId = useChannelId();
-  
+
   const { mutate: generateUploadurl } = useGenerateUploadUrl();
   const { mutate: createMessage } = useCreateMessage();
+  const { data: canvases } = useGetCanvases({ workspaceId });
 
 
   const handleSubmit = async (
-    { body,
-      image,
-      video }: {
-        body: string;
-        image: File | null;
-        video: File | null;
-      }) => {
+    { body, image, video, file, canvasId }: {
+      body: string;
+      image: File | null;
+      video: File | null;
+      file: File | null;
+      canvasId: Id<"canvases"> | null;
+    }) => {
     try {
       setIsPendng(true);
       editorRef.current?.enable(false);
@@ -60,6 +63,9 @@ export const ChatInput = ({
         body,
         image: undefined,
         video: undefined,
+        fileId: undefined,
+        fileName: undefined,
+        canvasId: canvasId ?? undefined,
       };
 
       if (image) {
@@ -88,8 +94,21 @@ export const ChatInput = ({
         values.video = storageId;
       }
 
-      await createMessage(values,
-        { throwError: true });
+      if (file) {
+        const url = await generateUploadurl({}, { throwError: true });
+        if (!url) throw new Error("url not found");
+        const result = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": file.type || "application/octet-stream" },
+          body: file,
+        });
+        if (!result.ok) throw new Error("Failed to upload file");
+        const { storageId } = await result.json();
+        values.fileId = storageId;
+        values.fileName = file.name;
+      }
+
+      await createMessage(values, { throwError: true });
 
       setEditorKey((prevKey) => prevKey + 1);
     } catch (error) {
@@ -107,10 +126,9 @@ export const ChatInput = ({
         placeholder={placeholder}
         variant="create"
         onSubmit={handleSubmit}
-
         disabled={isPending}
         innerRef={editorRef}
-
+        workspaceCanvases={canvases?.map((c: { _id: string; title: string }) => ({ _id: c._id, title: c.title })) ?? []}
       />
     </div>
 

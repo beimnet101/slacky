@@ -8,6 +8,8 @@ type RequestType = {
   workspaceId:Id<"workspaces">,
   image?:Id<"_storage">,
   video?:Id<"_storage">,
+  fileId?:Id<"_storage">,
+  fileName?:string,
   canvasId?:Id<"canvases">,
   channelId?:Id<"channels">,
   parentMessageId?:Id<"messages">,

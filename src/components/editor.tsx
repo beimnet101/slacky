@@ -3,34 +3,37 @@ import "quill/dist/quill.snow.css";
 import { Button } from "./ui/button";
 import { MutableRefObject, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { PiTextAa } from "react-icons/pi";
-import { ImageIcon, Smile, XIcon, VideoIcon } from "lucide-react";
+import { ImageIcon, Smile, XIcon, VideoIcon, Paperclip, FileText } from "lucide-react";
 import { MdSend } from "react-icons/md";
 import { Hint } from "./ui/hint";
 import { Delta, Op } from "quill/core";
 import { cn } from "@/lib/utils";
 import { EmojiPopover } from "./emoji-popover";
 import Image from "next/image";
+import { Id } from "../../convex/_generated/dataModel";
 
 
 
 type EditorValue = {
     image: File | null;
     video: File | null;
+    file: File | null;
+    canvasId: Id<"canvases"> | null;
     body: string
 }
 
 
 
 interface EditorProps {
-    onSubmit: ({ image, body }: EditorValue) => void;
+    onSubmit: (value: EditorValue) => void;
     onCancel?: () => void;
     variant?: "create" | "update";
     placeholder?: string;
     defaultValue?: Delta | Op[];
     innerRef?: MutableRefObject<Quill | null>;
     disabled?: boolean;
+    workspaceCanvases?: { _id: string; title: string }[];
 };
-
 
 
 
@@ -43,12 +46,18 @@ const Editor = ({
     innerRef,
     disabled,
     onSubmit,
+    workspaceCanvases = [],
 }: EditorProps
 ) => {
 
     const [text, setText] = useState("");
     const [image, setImage] = useState<File | null>(null);
     const [video, setVideo] = useState<File | null>(null);
+    const [file, setFile] = useState<File | null>(null);
+    const [canvasId, setCanvasId] = useState<Id<"canvases"> | null>(null);
+    const [canvasTitle, setCanvasTitle] = useState<string | null>(null);
+    const [showCanvasPicker, setShowCanvasPicker] = useState(false);
+    const canvasIdRef = useRef<Id<"canvases"> | null>(null);
 
     const [isToolbarVisible, setIsToolbarVisible] = useState(false);
 
@@ -60,12 +69,14 @@ const Editor = ({
     const disabledRef = useRef(disabled);
     const imageElementRef = useRef<HTMLInputElement>(null);
     const videoElementRef = useRef<HTMLInputElement>(null);
+    const fileElementRef = useRef<HTMLInputElement>(null);
 
     useLayoutEffect(() => {
         submitRef.current = onSubmit;
         placeholderRef.current = placeholder;
         defaultValueRef.current = defaultValue;
         disabledRef.current = disabled;
+        canvasIdRef.current = canvasId;
     });
 
 
@@ -103,10 +114,12 @@ const Editor = ({
                                 const text = quill.getText();
                                 const addedImage = imageElementRef.current?.files?.[0] || null;
                                 const addedVideo = videoElementRef.current?.files?.[0] || null;
-                                const isEmpity = !addedImage && !addedVideo && text.replace(/<(.|\n)*?>/g, "").trim().length === 0;
+                                const addedFile = fileElementRef.current?.files?.[0] || null;
+                                const currentCanvasId = canvasIdRef.current;
+                                const isEmpity = !addedImage && !addedVideo && !addedFile && !currentCanvasId && text.replace(/<(.|\n)*?>/g, "").trim().length === 0;
                                 if (isEmpity) return;
                                 const body = JSON.stringify(quill.getContents());
-                                submitRef.current?.({ body, image: addedImage, video: addedVideo })
+                                submitRef.current?.({ body, image: addedImage, video: addedVideo, file: addedFile, canvasId: currentCanvasId })
                             }
                         },
                         shift_enter: {
@@ -175,8 +188,17 @@ const Editor = ({
         quill?.insertText(length - 1, emojiValue);
 
     }
-    const isEmpty = !image && !video && text.replace(/<(.|\n)*?>/g, "").trim().length === 0;
-    console.log({ isEmpty, text });
+    const isEmpty = !image && !video && !file && !canvasId && text.replace(/<(.|\n)*?>/g, "").trim().length === 0;
+
+    const getFileIcon = (fileName: string) => {
+        const ext = fileName.split(".").pop()?.toLowerCase() ?? "";
+        if (["pdf"].includes(ext)) return "📄";
+        if (["doc", "docx"].includes(ext)) return "📝";
+        if (["xls", "xlsx"].includes(ext)) return "📊";
+        if (["ppt", "pptx"].includes(ext)) return "📋";
+        if (["zip", "rar", "7z"].includes(ext)) return "🗜️";
+        return "📎";
+    };
 
     return (
 
@@ -193,6 +215,16 @@ const Editor = ({
                 accept="video/*"
                 ref={videoElementRef}
                 onChange={(event) => setVideo(event.target.files![0])}
+                className="hidden"
+            />
+            <input
+                type="file"
+                accept="*/*"
+                ref={fileElementRef}
+                onChange={(event) => {
+                    const f = event.target.files?.[0];
+                    if (f) setFile(f);
+                }}
                 className="hidden"
             />
             <div>
@@ -246,8 +278,41 @@ const Editor = ({
                         </div>
                     )}
 
+                    {!!file && (
+                        <div className="p-2">
+                            <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 max-w-[280px] group/file">
+                                <span className="text-lg">{getFileIcon(file.name)}</span>
+                                <span className="text-xs text-slate-700 truncate flex-1">{file.name}</span>
+                                <button
+                                    onClick={() => {
+                                        setFile(null);
+                                        fileElementRef.current!.value = "";
+                                    }}
+                                    className="text-slate-400 hover:text-slate-600 flex-shrink-0"
+                                >
+                                    <XIcon className="size-3.5" />
+                                </button>
+                            </div>
+                        </div>
+                    )}
 
-                    <div className="flex px-2 pb-[1px] z-[5] gap-2"> {/* Adjusted padding */}
+                    {!!canvasId && canvasTitle && (
+                        <div className="p-2">
+                            <div className="flex items-center gap-2 bg-teal-50 border border-teal-200 rounded-lg px-3 py-2 max-w-[280px]">
+                                <FileText className="size-4 text-teal-600 flex-shrink-0" />
+                                <span className="text-xs text-teal-800 truncate flex-1">{canvasTitle}</span>
+                                <button
+                                    onClick={() => { setCanvasId(null); canvasIdRef.current = null; setCanvasTitle(null); }}
+                                    className="text-teal-400 hover:text-teal-600 flex-shrink-0"
+                                >
+                                    <XIcon className="size-3.5" />
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+
+                    <div className="flex px-2 pb-[1px] z-[5] gap-2 relative"> {/* Adjusted padding */}
                         <Hint label={isToolbarVisible ? "Show formatting" : "Hide formatting"}>
                             <Button
                                 disabled={disabled}
@@ -292,6 +357,53 @@ const Editor = ({
                                         <VideoIcon className="size-4" />
                                     </Button>
                                 </Hint>
+                                <Hint label="Attach file">
+                                    <Button
+                                        disabled={disabled}
+                                        size="iconSm"
+                                        variant="ghost"
+                                        onClick={() => fileElementRef.current?.click()}
+                                    >
+                                        <Paperclip className="size-4" />
+                                    </Button>
+                                </Hint>
+                                {workspaceCanvases.length > 0 && (
+                                    <div className="relative">
+                                        <Hint label="Attach canvas">
+                                            <Button
+                                                disabled={disabled}
+                                                size="iconSm"
+                                                variant="ghost"
+                                                onClick={() => setShowCanvasPicker((v) => !v)}
+                                            >
+                                                <FileText className="size-4" />
+                                            </Button>
+                                        </Hint>
+                                        {showCanvasPicker && (
+                                            <div className="absolute bottom-full left-0 mb-1 bg-white border border-slate-200 rounded-lg shadow-lg z-50 min-w-[200px] max-w-[260px] max-h-[200px] overflow-y-auto">
+                                                <div className="px-3 py-2 text-xs font-semibold text-slate-500 border-b border-slate-100">
+                                                    Canvases
+                                                </div>
+                                                {workspaceCanvases.map((c) => (
+                                                    <button
+                                                        key={c._id}
+                                                        onClick={() => {
+                                                            const id = c._id as Id<"canvases">;
+                                                            setCanvasId(id);
+                                                            canvasIdRef.current = id;
+                                                            setCanvasTitle(c.title);
+                                                            setShowCanvasPicker(false);
+                                                        }}
+                                                        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-slate-50 transition-colors"
+                                                    >
+                                                        <FileText className="size-3.5 text-teal-600 flex-shrink-0" />
+                                                        <span className="truncate">{c.title}</span>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </>
                         )}
 
@@ -313,6 +425,8 @@ const Editor = ({
                                             body: JSON.stringify(quillRef.current?.getContents()),
                                             image,
                                             video,
+                                            file,
+                                            canvasId,
                                         })
                                     }}
                                     disabled={disabled || isEmpty}
@@ -330,6 +444,8 @@ const Editor = ({
                                         body: JSON.stringify(quillRef.current?.getContents()),
                                         image,
                                         video,
+                                        file,
+                                        canvasId,
                                     })
                                 }}
                                 disabled={disabled || isEmpty}

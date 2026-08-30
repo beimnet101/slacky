@@ -35,6 +35,8 @@ interface MessageProps {
     body: Doc<"messages">["body"];
     image: string | null | undefined;
     video?: string | null | undefined;
+    file?: string | null | undefined;
+    fileName?: string | null | undefined;
     canvas?: { _id: string; title: string; content: string } | null;
     createdAt: Doc<"messages">["_creationTime"]
     updatedAt: Doc<"messages">["updatedAt"];
@@ -69,6 +71,8 @@ export const Message = (
         body,
         image,
         video,
+        file,
+        fileName,
         canvas,
         createdAt,
         updatedAt,
@@ -207,6 +211,19 @@ export const Message = (
                                 <Renderer value={body} />
                                 <Thumbnail url={image} />
                                 <VideoPlayer url={video} />
+                                {file && fileName && (
+                                    <a
+                                        href={file}
+                                        download={fileName}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center gap-2 border border-slate-200 rounded-lg px-3 py-2 my-2 max-w-[280px] bg-slate-50 hover:bg-slate-100 transition-colors"
+                                    >
+                                        <span className="text-lg">📎</span>
+                                        <span className="text-xs text-slate-700 truncate flex-1">{fileName}</span>
+                                        <span className="text-xs text-blue-600 font-medium flex-shrink-0">Download</span>
+                                    </a>
+                                )}
                                 {canvas && (
                                     <div className="flex items-start gap-2 border border-slate-200 rounded-lg p-3 my-2 max-w-[360px] bg-white hover:bg-slate-50 transition-colors">
                                         <div className="flex-shrink-0 w-8 h-8 bg-teal-600/20 rounded flex items-center justify-center mt-0.5">
@@ -301,6 +318,19 @@ export const Message = (
                                 <Renderer value={body} />
                                 <Thumbnail url={image} />
                                 <VideoPlayer url={video} />
+                                {file && fileName && (
+                                    <a
+                                        href={file}
+                                        download={fileName}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center gap-2 border border-slate-200 rounded-lg px-3 py-2 my-2 max-w-[280px] bg-slate-50 hover:bg-slate-100 transition-colors"
+                                    >
+                                        <span className="text-lg">📎</span>
+                                        <span className="text-xs text-slate-700 truncate flex-1">{fileName}</span>
+                                        <span className="text-xs text-blue-600 font-medium flex-shrink-0">Download</span>
+                                    </a>
+                                )}
                                 {canvas && (
                                     <div className="flex items-start gap-2 border border-slate-200 rounded-lg p-3 my-2 max-w-[360px] bg-white hover:bg-slate-50 transition-colors">
                                         <div className="flex-shrink-0 w-8 h-8 bg-teal-600/20 rounded flex items-center justify-center mt-0.5">

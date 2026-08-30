@@ -52,6 +52,8 @@ const schema = defineSchema({
     body: v.string(),
     image: v.optional(v.id("_storage")),
     video: v.optional(v.id("_storage")),
+    fileId: v.optional(v.id("_storage")),
+    fileName: v.optional(v.string()),
     canvasId: v.optional(v.id("canvases")),
     memberId: v.id("members"),
     workspaceId: v.id("workspaces"),

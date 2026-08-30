@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { useGetMessages } from "../api/use-get-messages";
 import { differenceInMinutes, format, isToday, isYesterday } from "date-fns";
 import { RepliesTop } from "@/components/reply";
+import { useGetCanvases } from "@/features/canvases/api/use-get-canvases";
 const Editor = dynamic(() => import("@/components/editor"), { ssr: false });
 
 interface ThreadProps {
@@ -35,6 +36,9 @@ type CreateMessageValues = {
     body: string;
     image?: Id<"_storage"> | undefined;
     video?: Id<"_storage"> | undefined;
+    fileId?: Id<"_storage"> | undefined;
+    fileName?: string | undefined;
+    canvasId?: Id<"canvases"> | undefined;
 }
 
 
@@ -62,6 +66,7 @@ export const Thread = ({
 
     const { data: currentMember } = useCurrentMember({ workspaceId })
     const { data: message, isLoading: loadingMessage } = useGetMessage({ id: messageId });
+    const { data: canvases } = useGetCanvases({ workspaceId });
 
     const { results, status, loadMore } = useGetMessages({
         channelId,
@@ -74,13 +79,13 @@ export const Thread = ({
 
 
     const handleSubmit = async (
-        { body,
-            image,
-            video }: {
-                body: string;
-                image: File | null;
-                video: File | null;
-            }) => {
+        { body, image, video, file, canvasId }: {
+            body: string;
+            image: File | null;
+            video: File | null;
+            file: File | null;
+            canvasId: Id<"canvases"> | null;
+        }) => {
         try {
             setIsPendng(true);
             editorRef.current?.enable(false);
@@ -91,6 +96,9 @@ export const Thread = ({
                 body,
                 image: undefined,
                 video: undefined,
+                fileId: undefined,
+                fileName: undefined,
+                canvasId: canvasId ?? undefined,
             };
 
             if (image) {
@@ -119,8 +127,21 @@ export const Thread = ({
                 values.video = storageId;
             }
 
-            await createMessage(values,
-                { throwError: true });
+            if (file) {
+                const url = await generateUploadurl({}, { throwError: true });
+                if (!url) throw new Error("url not found");
+                const result = await fetch(url, {
+                    method: "POST",
+                    headers: { "Content-Type": file.type || "application/octet-stream" },
+                    body: file,
+                });
+                if (!result.ok) throw new Error("Failed to upload file");
+                const { storageId } = await result.json();
+                values.fileId = storageId;
+                values.fileName = file.name;
+            }
+
+            await createMessage(values, { throwError: true });
 
             setEditorKey((prevKey) => prevKey + 1);
         } catch (error) {
@@ -259,6 +280,8 @@ export const Thread = ({
                                     body={message.body}
                                     image={message.image}
                                     video={(message as any).video}
+                                    file={(message as any).file}
+                                    fileName={(message as any).fileName}
                                     canvas={(message as any).canvas}
                                     updatedAt={message.updatedAt}
                                     createdAt={message._creationTime}
@@ -320,6 +343,8 @@ export const Thread = ({
                     body={message.body}
                     image={message.image}
                     video={(message as any).video}
+                    file={(message as any).file}
+                    fileName={(message as any).fileName}
                     canvas={(message as any).canvas}
                     createdAt={message._creationTime}
                     updatedAt={message.updatedAt}
@@ -337,8 +362,7 @@ export const Thread = ({
                     innerRef={editorRef}
                     disabled={isPending}
                     placeholder="Reply..."
-
-
+                    workspaceCanvases={canvases?.map((c: { _id: string; title: string }) => ({ _id: c._id, title: c.title })) ?? []}
                 />
             </div>
         </div >
