@@ -17,8 +17,9 @@ export const CallManager = ({ workspaceId }: CallManagerProps) => {
   const declineMutation = useMutation(api.calls.decline);
   const endMutation = useMutation(api.calls.end);
 
-  if (!activeCall) {
-    // Reset accepted state when no active call
+  // undefined = still loading (don't reset state), null = no active call
+  if (activeCall === undefined) return null;
+  if (activeCall === null) {
     if (accepted) setAccepted(false);
     return null;
   }

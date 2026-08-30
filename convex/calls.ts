@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { action, mutation, query } from "./_generated/server";
 import { auth } from "./auth";
 
 const getMember = async (ctx: any, workspaceId: any, userId: any) => {
@@ -101,4 +101,28 @@ export const getActiveCall = query({
 export const getCallById = query({
   args: { callId: v.id("calls") },
   handler: async (ctx, args) => ctx.db.get(args.callId),
+});
+
+export const getIceServers = action({
+  args: {},
+  handler: async (): Promise<{ urls: string; username?: string; credential?: string }[]> => {
+    const domain = process.env.METERED_DOMAIN;
+    const apiKey = process.env.METERED_API_KEY;
+
+    if (!domain || !apiKey) {
+      return [
+        { urls: "stun:stun.l.google.com:19302" },
+        { urls: "stun:stun1.l.google.com:19302" },
+      ];
+    }
+
+    const res = await fetch(`https://${domain}/api/v1/turn/credentials?apiKey=${apiKey}`);
+    if (!res.ok) {
+      return [
+        { urls: "stun:stun.l.google.com:19302" },
+        { urls: "stun:stun1.l.google.com:19302" },
+      ];
+    }
+    return res.json();
+  },
 });
