@@ -12,7 +12,7 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog";
-import { TrashIcon } from "lucide-react";
+import { TrashIcon, Video } from "lucide-react";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { DialogClose } from "@radix-ui/react-dialog";
@@ -26,11 +26,11 @@ import { useCurrentMember } from "@/features/members/api/use-current-member";
 
 
 interface HeaderProps {
-    title: string,
-
+    title: string;
+    onStartConference?: () => void;
 }
 
-export const Header = ({ title }: HeaderProps) => {
+export const Header = ({ title, onStartConference }: HeaderProps) => {
 
 
     const router = useRouter();
@@ -103,6 +103,17 @@ export const Header = ({ title }: HeaderProps) => {
 
         <div className="bg-white border-b h-[49px] flex items-center px-4 overflow-hidden">
             <ConfirmDialog />
+            <div className="ml-auto mr-2">
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-8 text-gray-500 hover:text-gray-800 hover:bg-gray-100"
+                    onClick={onStartConference}
+                    title="Start video conference"
+                >
+                    <Video className="size-4" />
+                </Button>
+            </div>
             <Dialog>
                 <DialogTrigger asChild>
                     <Button
