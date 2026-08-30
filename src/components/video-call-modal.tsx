@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useMutation, useQuery, useAction } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
@@ -26,6 +26,7 @@ export const VideoCallModal = ({ callId, role, otherParty, onClose }: VideoCallM
   const appliedCandidates = useRef<Set<string>>(new Set());
   const remoteDescSet = useRef(false);
   const pendingCandidates = useRef<string[]>([]);
+  const hideTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const screenTrackRef = useRef<MediaStreamTrack | null>(null);
   const [isMuted, setIsMuted] = useState(false);
@@ -35,9 +36,8 @@ export const VideoCallModal = ({ callId, role, otherParty, onClose }: VideoCallM
   const [callDuration, setCallDuration] = useState(0);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const [iceState, setIceState] = useState<RTCIceConnectionState>("new");
-  // pcReady becomes true after PC is created — used as effect dependency
-  // so signaling effects re-fire once the PC exists
   const [pcReady, setPcReady] = useState(false);
+  const [showControls, setShowControls] = useState(true);
 
   const callData = useQuery(api.calls.getCallById, { callId });
   const getIceServersAction = useAction(api.calls.getIceServers);
@@ -45,6 +45,23 @@ export const VideoCallModal = ({ callId, role, otherParty, onClose }: VideoCallM
   const answerMutation = useMutation(api.calls.answer);
   const endMutation = useMutation(api.calls.end);
   const addIceMutation = useMutation(api.calls.addIceCandidate);
+
+  /** Reveal controls and restart the hide timer */
+  const revealControls = useCallback(() => {
+    setShowControls(true);
+    if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+    hideTimerRef.current = setTimeout(() => setShowControls(false), 4000);
+  }, []);
+
+  // Start hide timer once connected
+  useEffect(() => {
+    if (isConnected) {
+      revealControls();
+    }
+    return () => {
+      if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+    };
+  }, [isConnected, revealControls]);
 
   /** Apply any candidates that arrived before remote description was set */
   const flushPending = () => {
@@ -56,7 +73,7 @@ export const VideoCallModal = ({ callId, role, otherParty, onClose }: VideoCallM
     pendingCandidates.current = [];
   };
 
-  // ─── Step 1: Get media + create PC (fetches ICE servers first) ──────────
+  // ─── Step 1: Get media + create PC ──────────────────────────────────────────
   useEffect(() => {
     let alive = true;
 
@@ -65,7 +82,7 @@ export const VideoCallModal = ({ callId, role, otherParty, onClose }: VideoCallM
         navigator.mediaDevices.getUserMedia({ video: true, audio: true }),
         getIceServersAction({}).catch(() => FALLBACK_ICE_SERVERS),
       ]);
-      if (!alive) { stream.getTracks().forEach(t => t.stop()); return; }
+      if (!alive) { stream.getTracks().forEach((t: MediaStreamTrack) => t.stop()); return; }
 
       localStreamRef.current = stream;
       if (localVideoRef.current) localVideoRef.current.srcObject = stream;
@@ -73,7 +90,7 @@ export const VideoCallModal = ({ callId, role, otherParty, onClose }: VideoCallM
       const pc = new RTCPeerConnection({ iceServers: servers });
       pcRef.current = pc;
 
-      stream.getTracks().forEach(track => pc.addTrack(track, stream));
+      stream.getTracks().forEach((track: MediaStreamTrack) => pc.addTrack(track, stream));
 
       pc.ontrack = (e) => {
         if (remoteVideoRef.current && e.streams[0]) {
@@ -95,11 +112,9 @@ export const VideoCallModal = ({ callId, role, otherParty, onClose }: VideoCallM
       if (role === "caller") {
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
-        // Store the offer in Convex so receiver can pick it up
         await setOfferMutation({ callId, offer: JSON.stringify(pc.localDescription) });
       }
 
-      // Signal to signaling effects that the PC is now ready
       if (alive) setPcReady(true);
     })().catch(console.error);
 
@@ -111,20 +126,10 @@ export const VideoCallModal = ({ callId, role, otherParty, onClose }: VideoCallM
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ─── Step 2 (Receiver): Apply offer → create & store answer ───────────────
-  // Depends on BOTH callData.offer AND pcReady so it fires correctly even if
-  // the offer was already in Convex before the PC finished being created.
+  // ─── Step 2 (Receiver): Apply offer → create & store answer ─────────────────
   useEffect(() => {
-    if (
-      role !== "receiver" ||
-      !callData?.offer ||
-      !pcReady ||
-      !pcRef.current ||
-      remoteDescSet.current
-    ) return;
-
+    if (role !== "receiver" || !callData?.offer || !pcReady || !pcRef.current || remoteDescSet.current) return;
     remoteDescSet.current = true;
-
     (async () => {
       const pc = pcRef.current!;
       await pc.setRemoteDescription(new RTCSessionDescription(JSON.parse(callData.offer!)));
@@ -135,18 +140,10 @@ export const VideoCallModal = ({ callId, role, otherParty, onClose }: VideoCallM
     })().catch(console.error);
   }, [callData?.offer, pcReady]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ─── Step 3 (Caller): Apply answer when receiver stores it ────────────────
-  // Same pattern — depend on pcReady so it retries if answer arrived first.
+  // ─── Step 3 (Caller): Apply answer ──────────────────────────────────────────
   useEffect(() => {
-    if (
-      role !== "caller" ||
-      !callData?.answer ||
-      !pcReady ||
-      !pcRef.current ||
-      remoteDescSet.current
-    ) return;
+    if (role !== "caller" || !callData?.answer || !pcReady || !pcRef.current || remoteDescSet.current) return;
     if (pcRef.current.signalingState !== "have-local-offer") return;
-
     remoteDescSet.current = true;
     pcRef.current
       .setRemoteDescription(new RTCSessionDescription(JSON.parse(callData.answer)))
@@ -154,30 +151,25 @@ export const VideoCallModal = ({ callId, role, otherParty, onClose }: VideoCallM
       .catch(console.error);
   }, [callData?.answer, pcReady]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ─── Step 4: Apply remote ICE candidates ──────────────────────────────────
+  // ─── Step 4: Apply remote ICE candidates ────────────────────────────────────
   useEffect(() => {
     if (!callData || !pcReady) return;
-    const candidates =
-      role === "caller"
-        ? (callData.receiverCandidates ?? [])
-        : (callData.callerCandidates ?? []);
+    const candidates = role === "caller"
+      ? (callData.receiverCandidates ?? [])
+      : (callData.callerCandidates ?? []);
 
     for (const raw of candidates) {
       if (appliedCandidates.current.has(raw)) continue;
       appliedCandidates.current.add(raw);
-
       if (!remoteDescSet.current) {
-        // Queue until remote description is set
         pendingCandidates.current.push(raw);
       } else {
-        pcRef.current
-          ?.addIceCandidate(new RTCIceCandidate(JSON.parse(raw)))
-          .catch(() => {});
+        pcRef.current?.addIceCandidate(new RTCIceCandidate(JSON.parse(raw))).catch(() => {});
       }
     }
   }, [callData?.callerCandidates, callData?.receiverCandidates, pcReady]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ─── Auto-close when call ends ────────────────────────────────────────────
+  // ─── Auto-close when call ends ──────────────────────────────────────────────
   useEffect(() => {
     if (callData?.status === "ended" || callData?.status === "declined") {
       localStreamRef.current?.getTracks().forEach(t => t.stop());
@@ -186,17 +178,13 @@ export const VideoCallModal = ({ callId, role, otherParty, onClose }: VideoCallM
     }
   }, [callData?.status]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ─── Call duration timer ────────────────────────────────────────────────────
   useEffect(() => {
     if (isConnected) {
-      timerRef.current = setInterval(() => {
-        setCallDuration(d => d + 1);
-      }, 1000);
+      timerRef.current = setInterval(() => setCallDuration(d => d + 1), 1000);
     }
     return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-        timerRef.current = null;
-      }
+      if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
     };
   }, [isConnected]);
 
@@ -210,7 +198,6 @@ export const VideoCallModal = ({ callId, role, otherParty, onClose }: VideoCallM
   const toggleScreenShare = async () => {
     const pc = pcRef.current;
     if (!pc) return;
-
     if (isScreenSharing) {
       screenTrackRef.current?.stop();
       const cameraTrack = localStreamRef.current?.getVideoTracks()[0];
@@ -264,82 +251,97 @@ export const VideoCallModal = ({ callId, role, otherParty, onClose }: VideoCallM
   const fallback = otherParty.name?.charAt(0).toUpperCase() ?? "?";
 
   return (
-    <div className="fixed inset-0 z-50 bg-black flex flex-col">
-      {/* Remote video */}
-      <div className="flex-1 relative">
-        <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-cover" />
+    <div
+      className="fixed inset-0 z-50 bg-black select-none"
+      onClick={revealControls}
+    >
+      {/* Remote video — truly fills the whole screen */}
+      <video
+        ref={remoteVideoRef}
+        autoPlay
+        playsInline
+        className="absolute inset-0 w-full h-full object-cover"
+      />
 
-        {!isConnected && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
-            <Avatar className="size-24">
-              <AvatarImage src={otherParty.image} />
-              <AvatarFallback className="text-3xl bg-purple-700 text-white">{fallback}</AvatarFallback>
-            </Avatar>
-            <p className="text-white text-xl font-semibold">{otherParty.name ?? "Unknown"}</p>
-            <p className="text-gray-400 text-sm animate-pulse">
-              {iceState === "failed" ? "Connection failed" :
-               iceState === "disconnected" ? "Reconnecting..." :
-               role === "caller" ? "Calling..." : "Connecting..."}
-            </p>
-          </div>
-        )}
-
-        <div className="absolute top-4 left-4 text-white text-sm font-medium drop-shadow">
-          {otherParty.name}
+      {/* Calling / connecting overlay */}
+      {!isConnected && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-black/60">
+          <Avatar className="size-24">
+            <AvatarImage src={otherParty.image} />
+            <AvatarFallback className="text-3xl bg-purple-700 text-white">{fallback}</AvatarFallback>
+          </Avatar>
+          <p className="text-white text-xl font-semibold">{otherParty.name ?? "Unknown"}</p>
+          <p className="text-gray-300 text-sm animate-pulse">
+            {iceState === "failed" ? "Connection failed" :
+             iceState === "disconnected" ? "Reconnecting..." :
+             role === "caller" ? "Calling..." : "Connecting..."}
+          </p>
         </div>
+      )}
 
+      {/* Top bar — name + timer, always visible */}
+      <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-4 pt-12 pb-4 bg-gradient-to-b from-black/60 to-transparent pointer-events-none">
+        <span className="text-white font-semibold drop-shadow">{otherParty.name}</span>
         {isConnected && (
-          <div className="absolute top-4 right-4 bg-black/50 text-white text-sm px-2 py-1 rounded-full font-mono">
+          <span className="bg-black/50 text-white text-sm px-2 py-1 rounded-full font-mono">
             {formatDuration(callDuration)}
+          </span>
+        )}
+      </div>
+
+      {/* Local PiP — bottom-right, sits above controls */}
+      <div className="absolute bottom-32 right-4 w-32 h-44 rounded-2xl overflow-hidden border-2 border-white/30 bg-gray-900 shadow-xl">
+        <video ref={localVideoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+        {isCameraOff && (
+          <div className="absolute inset-0 bg-gray-900 flex items-center justify-center">
+            <VideoOff className="size-6 text-gray-400" />
           </div>
         )}
-
-        {/* Local PiP */}
-        <div className="absolute bottom-24 right-4 w-36 h-28 rounded-xl overflow-hidden border-2 border-white/20 bg-gray-900 shadow-lg">
-          <video ref={localVideoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
-          {isCameraOff && (
-            <div className="absolute inset-0 bg-gray-900 flex items-center justify-center">
-              <VideoOff className="size-6 text-gray-400" />
-            </div>
-          )}
+        <div className="absolute bottom-1.5 left-0 right-0 text-center">
+          <span className="text-[10px] text-white/70 bg-black/40 px-2 py-0.5 rounded-full">You</span>
         </div>
       </div>
 
-      {/* Controls */}
-      <div className="bg-black/80 backdrop-blur-sm px-6 py-4 flex items-center justify-center gap-5">
-        <button
-          onClick={toggleMute}
-          className={`size-12 rounded-full flex items-center justify-center transition-colors ${
-            isMuted ? "bg-red-600 hover:bg-red-700" : "bg-white/20 hover:bg-white/30"
-          }`}
-        >
-          {isMuted ? <MicOff className="size-5 text-white" /> : <Mic className="size-5 text-white" />}
-        </button>
+      {/* Controls — overlay at bottom, auto-hide after 4s */}
+      <div
+        className={`absolute bottom-0 left-0 right-0 transition-opacity duration-300 ${showControls ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+        style={{ paddingBottom: "env(safe-area-inset-bottom, 16px)" }}
+      >
+        <div className="bg-gradient-to-t from-black/80 to-transparent pt-10 pb-8 flex items-center justify-center gap-5">
+          <button
+            onClick={(e) => { e.stopPropagation(); toggleMute(); revealControls(); }}
+            className={`size-14 rounded-full flex items-center justify-center transition-colors shadow-md ${
+              isMuted ? "bg-red-600 hover:bg-red-700" : "bg-white/25 hover:bg-white/40"
+            }`}
+          >
+            {isMuted ? <MicOff className="size-6 text-white" /> : <Mic className="size-6 text-white" />}
+          </button>
 
-        <button
-          onClick={toggleScreenShare}
-          className={`size-12 rounded-full flex items-center justify-center transition-colors ${
-            isScreenSharing ? "bg-blue-600 hover:bg-blue-700" : "bg-white/20 hover:bg-white/30"
-          }`}
-        >
-          <Monitor className="size-5 text-white" />
-        </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); toggleScreenShare(); revealControls(); }}
+            className={`size-14 rounded-full flex items-center justify-center transition-colors shadow-md ${
+              isScreenSharing ? "bg-blue-600 hover:bg-blue-700" : "bg-white/25 hover:bg-white/40"
+            }`}
+          >
+            <Monitor className="size-6 text-white" />
+          </button>
 
-        <button
-          onClick={handleEnd}
-          className="size-14 rounded-full bg-red-600 hover:bg-red-700 flex items-center justify-center transition-colors shadow-lg"
-        >
-          <PhoneOff className="size-6 text-white" />
-        </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); handleEnd(); }}
+            className="size-16 rounded-full bg-red-600 hover:bg-red-700 flex items-center justify-center transition-colors shadow-xl"
+          >
+            <PhoneOff className="size-7 text-white" />
+          </button>
 
-        <button
-          onClick={toggleCamera}
-          className={`size-12 rounded-full flex items-center justify-center transition-colors ${
-            isCameraOff ? "bg-red-600 hover:bg-red-700" : "bg-white/20 hover:bg-white/30"
-          }`}
-        >
-          {isCameraOff ? <VideoOff className="size-5 text-white" /> : <Video className="size-5 text-white" />}
-        </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); toggleCamera(); revealControls(); }}
+            className={`size-14 rounded-full flex items-center justify-center transition-colors shadow-md ${
+              isCameraOff ? "bg-red-600 hover:bg-red-700" : "bg-white/25 hover:bg-white/40"
+            }`}
+          >
+            {isCameraOff ? <VideoOff className="size-6 text-white" /> : <Video className="size-6 text-white" />}
+          </button>
+        </div>
       </div>
     </div>
   );
