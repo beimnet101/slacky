@@ -7,6 +7,8 @@ import { Id } from "../../convex/_generated/dataModel";
 import { useWorkspaceId } from "@/hooks/use-workspace-id";
 import { useCurrentMember } from "@/features/members/api/use-current-member";
 import { Loader } from "lucide-react";
+import { useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
 import { ConversationHero } from "./conversation-hero";
 const TIME_THRESHOLD = 5;
 
@@ -57,6 +59,8 @@ export const MessageList = ({
     const workspaceId = useWorkspaceId();
     const { data: currentMember } = useCurrentMember({ workspaceId })
     const [editingId, setEditingId] = useState<Id<"messages"> | null>(null);
+    const jiraConnection = useQuery(api.jira.getConnection, { workspaceId });
+    const jiraConnected = !!jiraConnection;
 
     const groupedMessage = data?.reduce(
         (groups, messages) => {
@@ -124,6 +128,7 @@ export const MessageList = ({
                                 callEvent={(message as any).callEvent}
                                 channelId={channelId}
                                 conversationId={conversationId}
+                                jiraConnected={jiraConnected}
                             />
                         )
                     })}
