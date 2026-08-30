@@ -10,13 +10,19 @@ import {
     DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Doc } from "../../../../convex/_generated/dataModel";
-import { ChevronDown, ListFilter, SquarePen } from "lucide-react";
+import { ChevronDown, Layers, ListFilter, SquarePen } from "lucide-react";
 import { Hint } from "@/components/ui/hint";
 import { PreferencesModal } from "./preferences-modal";
 import { InviteModal } from "./invite-modal";
 import { NewMessageModal } from "./new-message-modal";
 import { useGetMembers } from "@/features/members/api/use-get-members";
 import { useWorkspaceId } from "@/hooks/use-workspace-id";
+import dynamic from "next/dynamic";
+
+const JiraSetupModal = dynamic(
+    () => import("@/components/jira-setup-modal").then((m) => m.JiraSetupModal),
+    { ssr: false }
+);
 
 interface WorkspaceHeaderProps {
     workspace: Doc<"workspaces">;
@@ -31,9 +37,17 @@ export const WorkspaceHeader = ({ workspace, isAdmin, onFilter }: WorkspaceHeade
     const [preferencesopen, setPrefrencesOpen] = useState(false);
     const [inviteOpen, setInviteOpen] = useState(false);
     const [newMessageOpen, setNewMessageOpen] = useState(false);
+    const [jiraOpen, setJiraOpen] = useState(false);
 
     return (
         <>
+            {jiraOpen && (
+                <JiraSetupModal
+                    open={jiraOpen}
+                    onClose={() => setJiraOpen(false)}
+                    workspaceId={workspaceId}
+                />
+            )}
             <InviteModal
                 open={inviteOpen}
                 setOpen={setInviteOpen}
@@ -110,6 +124,18 @@ export const WorkspaceHeader = ({ workspace, isAdmin, onFilter }: WorkspaceHeade
                             <ListFilter className="size-4" />
                         </Button>
                     </Hint>
+                    {isAdmin && (
+                        <Hint label="Jira Settings" side="bottom">
+                            <Button
+                                variant="transparent"
+                                size="iconSm"
+                                className="text-[#f9edffcc] hover:text-white"
+                                onClick={() => setJiraOpen(true)}
+                            >
+                                <Layers className="size-4" />
+                            </Button>
+                        </Hint>
+                    )}
                     <Hint label="New message" side="bottom">
                         <Button
                             variant="transparent"

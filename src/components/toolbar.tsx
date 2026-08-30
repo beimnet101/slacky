@@ -1,4 +1,4 @@
-import { MessageSquareTextIcon, Pencil, Smile, Trash } from "lucide-react";
+import { Bug, MessageSquareTextIcon, Pencil, Smile, Trash } from "lucide-react";
 import { Button } from "./ui/button";
 
 
@@ -12,6 +12,7 @@ interface ToolbarProps {
     handleDelete: () => void;
     handleReaction: (value: string) => void;
     hideThreadButton?: boolean;
+    onCreateJiraIssue?: () => void;
 };
 
 
@@ -26,6 +27,7 @@ export const Toolbar = (
         handleDelete,
         handleReaction,
         hideThreadButton,
+        onCreateJiraIssue,
 
     }: ToolbarProps
 ) => {
@@ -87,6 +89,19 @@ export const Toolbar = (
                             onClick={handleDelete}
                         >
                             <Trash className="size-4" />
+                        </Button>
+                    </Hint>
+                )}
+
+                {onCreateJiraIssue && (
+                    <Hint label="Create Jira Issue">
+                        <Button
+                            variant='ghost'
+                            size="iconSm"
+                            disabled={isPending}
+                            onClick={onCreateJiraIssue}
+                        >
+                            <Bug className="size-4" />
                         </Button>
                     </Hint>
                 )}

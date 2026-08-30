@@ -140,6 +140,15 @@ const schema = defineSchema({
     .index("by_receiver", ["receiverId"])
     .index("by_caller", ["callerId"])
     .index("by_workspace_id", ["workspaceId"]),
+
+  jiraConnections: defineTable({
+    workspaceId: v.id("workspaces"),
+    domain: v.string(),
+    email: v.string(),
+    apiToken: v.string(),
+    notificationChannelId: v.optional(v.id("channels")),
+    connectedBy: v.id("members"),
+  }).index("by_workspace", ["workspaceId"]),
 });
 
 

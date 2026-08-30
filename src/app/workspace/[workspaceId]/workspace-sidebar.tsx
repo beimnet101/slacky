@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { useCurrentMember } from "@/features/members/api/use-current-member";
 import { useGetWorkSpace } from "@/features/workspaces/api/use-get-workspace";
 import { useWorkspaceId } from "@/hooks/use-workspace-id";
-import { AlertTriangle, HashIcon, Loader, MessageSquareText, Search, SendHorizonal } from "lucide-react";
+import { AlertTriangle, HashIcon, Layers, Loader, MessageSquareText, Search, SendHorizonal } from "lucide-react";
 import { WorkspaceHeader } from "./workspace-header";
 import { SidebarItem } from "./sidebar-item";
 import { useGetChannels } from "@/features/channels/api/use-get-channels";
@@ -88,6 +88,12 @@ export const WorkspaceSidebar = () => {
                         icon={SendHorizonal}
                         id="drafts"
                         href={`/workspace/${workspaceId}/drafts`}
+                    />
+                    <SidebarItem
+                        label="Jira"
+                        icon={Layers}
+                        id="jira"
+                        href={`/workspace/${workspaceId}/jira`}
                     />
                 </div>
 

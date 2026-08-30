@@ -5,6 +5,8 @@ import dynamic from "next/dynamic";
 const Renderer = dynamic(() => import("@/components/renderer"), { ssr: false })
 const Editor = dynamic(() => import("@/components/editor"), { ssr: false })
 const CanvasEditorModal = dynamic(() => import("@/components/canvas-editor-modal").then(m => m.CanvasEditorModal), { ssr: false })
+const JiraCreateIssueModal = dynamic(() => import("@/components/jira-create-issue-modal").then(m => m.JiraCreateIssueModal), { ssr: false })
+const JiraIssueCard = dynamic(() => import("@/components/jira-issue-card").then(m => m.JiraIssueCard), { ssr: false })
 
 import { format, isToday, isYesterday } from "date-fns";
 import { Hint } from "./ui/hint";
@@ -56,6 +58,7 @@ interface MessageProps {
     callEvent?: { status: "missed" | "ended" | "declined"; duration?: number } | null;
     channelId?: Id<"channels">;
     conversationId?: Id<"conversations">;
+    jiraConnected?: boolean;
 };
 
 
@@ -93,6 +96,7 @@ export const Message = (
         callEvent,
         channelId,
         conversationId,
+        jiraConnected,
 
     }: MessageProps
 
@@ -108,6 +112,29 @@ export const Message = (
     const isPending = isUpdatingMessage || isTogglingReaction;
 
     const [editingCanvas, setEditingCanvas] = useState<{ _id: string; title: string; content: string; isStarred?: boolean } | null>(null);
+    const [showJiraModal, setShowJiraModal] = useState(false);
+
+    // Detect Jira browse URLs in message body
+    const jiraIssueKeys: { issueKey: string }[] = [];
+    try {
+        const bodyText = (() => {
+            try {
+                const delta = JSON.parse(body);
+                if (delta?.ops) {
+                    return delta.ops.map((op: any) => (typeof op.insert === "string" ? op.insert : "")).join("");
+                }
+            } catch {}
+            return body;
+        })();
+        const jiraUrlRegex = /https:\/\/[a-zA-Z0-9-]+\.atlassian\.net\/browse\/([A-Z][A-Z0-9]+-\d+)/g;
+        let match: RegExpExecArray | null;
+        while ((match = jiraUrlRegex.exec(bodyText)) !== null) {
+            const issueKey = match[1];
+            if (!jiraIssueKeys.find((k) => k.issueKey === issueKey)) {
+                jiraIssueKeys.push({ issueKey });
+            }
+        }
+    } catch {}
 
     const handleSendCanvas = async (canvasId: Id<"canvases">) => {
         if (!channelId && !conversationId) return;
@@ -257,6 +284,9 @@ export const Message = (
                                         <Pencil className="size-3.5 text-slate-400 opacity-0 group-hover/canvas:opacity-100 flex-shrink-0 mt-1" />
                                     </button>
                                 )}
+                                {jiraIssueKeys.map(({ issueKey }) => (
+                                    <JiraIssueCard key={issueKey} issueKey={issueKey} workspaceId={workspaceId} />
+                                ))}
                                 {updatedAt ? (
                                     <span className="text-xs text-muted-foreground">
                                         (edited)
@@ -284,10 +314,7 @@ export const Message = (
                             handleDelete={handleRemove}
                             handleReaction={handleReactions}
                             hideThreadButton={hideThreadButton}
-
-
-
-
+                            onCreateJiraIssue={jiraConnected ? () => setShowJiraModal(true) : undefined}
                         />)}
                 </div>
 
@@ -299,6 +326,15 @@ export const Message = (
                         initialIsStarred={(editingCanvas as any).isStarred}
                         onClose={() => setEditingCanvas(null)}
                         onSend={(channelId || conversationId) ? () => handleSendCanvas(editingCanvas._id as Id<"canvases">) : undefined}
+                    />
+                )}
+                {showJiraModal && (
+                    <JiraCreateIssueModal
+                        messageBody={body}
+                        onClose={() => setShowJiraModal(false)}
+                        workspaceId={workspaceId}
+                        channelId={channelId}
+                        conversationId={conversationId}
                     />
                 )}
             </>
@@ -369,6 +405,9 @@ export const Message = (
                                         <Pencil className="size-3.5 text-slate-400 opacity-0 group-hover/canvas:opacity-100 flex-shrink-0 mt-1" />
                                     </button>
                                 )}
+                                {jiraIssueKeys.map(({ issueKey }) => (
+                                    <JiraIssueCard key={issueKey} issueKey={issueKey} workspaceId={workspaceId} />
+                                ))}
                                 {updatedAt ? (
                                     <span className="text-xs text-muted-foreground">(edited)</span>
                                 ) : null}
@@ -392,10 +431,7 @@ export const Message = (
                         handleDelete={handleRemove}
                         handleReaction={handleReactions}
                         hideThreadButton={hideThreadButton}
-
-
-
-
+                        onCreateJiraIssue={jiraConnected ? () => setShowJiraModal(true) : undefined}
                     />)}
 
             </div>
@@ -408,6 +444,15 @@ export const Message = (
                     initialIsStarred={(editingCanvas as any).isStarred}
                     onClose={() => setEditingCanvas(null)}
                     onSend={(channelId || conversationId) ? () => handleSendCanvas(editingCanvas._id as Id<"canvases">) : undefined}
+                />
+            )}
+            {showJiraModal && (
+                <JiraCreateIssueModal
+                    messageBody={body}
+                    onClose={() => setShowJiraModal(false)}
+                    workspaceId={workspaceId}
+                    channelId={channelId}
+                    conversationId={conversationId}
                 />
             )}
         </>
