@@ -109,6 +109,15 @@ const schema = defineSchema({
     .index("by_mentioned_member", ["mentionedMemberId"])
     .index("by_workspace_id_mentioned", ["workspaceId", "mentionedMemberId"]),
 
+  activeConferences: defineTable({
+    channelId: v.id("channels"),
+    workspaceId: v.id("workspaces"),
+    startedByMemberId: v.id("members"),
+    startedByName: v.string(),
+  })
+    .index("by_channel_id", ["channelId"])
+    .index("by_workspace_id", ["workspaceId"]),
+
   calls: defineTable({
     workspaceId: v.id("workspaces"),
     callerId: v.id("members"),
