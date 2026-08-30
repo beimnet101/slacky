@@ -28,7 +28,7 @@ export const Conversation = ({ id }: ConversationProps) => {
 
     const handleVideoCall = async () => {
         try {
-            await initiateMutation({ workspaceId, receiverId: memberId });
+            await initiateMutation({ workspaceId, receiverId: memberId, conversationId: id });
         } catch (err) {
             console.error("Failed to initiate call:", err);
         }

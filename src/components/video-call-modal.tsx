@@ -4,7 +4,7 @@ import { useMutation, useQuery, useAction } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { PhoneOff, Mic, MicOff, Video, VideoOff } from "lucide-react";
+import { PhoneOff, Mic, MicOff, Video, VideoOff, Monitor } from "lucide-react";
 
 interface VideoCallModalProps {
   callId: Id<"calls">;
@@ -27,9 +27,13 @@ export const VideoCallModal = ({ callId, role, otherParty, onClose }: VideoCallM
   const remoteDescSet = useRef(false);
   const pendingCandidates = useRef<string[]>([]);
 
+  const screenTrackRef = useRef<MediaStreamTrack | null>(null);
   const [isMuted, setIsMuted] = useState(false);
   const [isCameraOff, setIsCameraOff] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
+  const [isScreenSharing, setIsScreenSharing] = useState(false);
+  const [callDuration, setCallDuration] = useState(0);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
   const [iceState, setIceState] = useState<RTCIceConnectionState>("new");
   // pcReady becomes true after PC is created — used as effect dependency
   // so signaling effects re-fire once the PC exists
@@ -182,6 +186,64 @@ export const VideoCallModal = ({ callId, role, otherParty, onClose }: VideoCallM
     }
   }, [callData?.status]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {
+    if (isConnected) {
+      timerRef.current = setInterval(() => {
+        setCallDuration(d => d + 1);
+      }, 1000);
+    }
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+  }, [isConnected]);
+
+  const formatDuration = (secs: number) => {
+    const h = Math.floor(secs / 3600);
+    const m = Math.floor((secs % 3600) / 60).toString().padStart(2, "0");
+    const s = (secs % 60).toString().padStart(2, "0");
+    return h > 0 ? `${h}:${m}:${s}` : `${m}:${s}`;
+  };
+
+  const toggleScreenShare = async () => {
+    const pc = pcRef.current;
+    if (!pc) return;
+
+    if (isScreenSharing) {
+      screenTrackRef.current?.stop();
+      const cameraTrack = localStreamRef.current?.getVideoTracks()[0];
+      if (cameraTrack) {
+        const sender = pc.getSenders().find(s => s.track?.kind === "video");
+        await sender?.replaceTrack(cameraTrack);
+        if (localVideoRef.current) localVideoRef.current.srcObject = localStreamRef.current;
+      }
+      setIsScreenSharing(false);
+    } else {
+      try {
+        const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+        const screenTrack = screenStream.getVideoTracks()[0];
+        screenTrackRef.current = screenTrack;
+        const sender = pc.getSenders().find(s => s.track?.kind === "video");
+        await sender?.replaceTrack(screenTrack);
+        if (localVideoRef.current) localVideoRef.current.srcObject = screenStream;
+        setIsScreenSharing(true);
+        screenTrack.onended = () => {
+          const camTrack = localStreamRef.current?.getVideoTracks()[0];
+          if (camTrack) {
+            const s = pc.getSenders().find(s => s.track?.kind === "video");
+            s?.replaceTrack(camTrack);
+            if (localVideoRef.current) localVideoRef.current.srcObject = localStreamRef.current;
+          }
+          setIsScreenSharing(false);
+        };
+      } catch {
+        // user cancelled or permission denied
+      }
+    }
+  };
+
   const handleEnd = async () => {
     await endMutation({ callId });
     localStreamRef.current?.getTracks().forEach(t => t.stop());
@@ -226,6 +288,12 @@ export const VideoCallModal = ({ callId, role, otherParty, onClose }: VideoCallM
           {otherParty.name}
         </div>
 
+        {isConnected && (
+          <div className="absolute top-4 right-4 bg-black/50 text-white text-sm px-2 py-1 rounded-full font-mono">
+            {formatDuration(callDuration)}
+          </div>
+        )}
+
         {/* Local PiP */}
         <div className="absolute bottom-24 right-4 w-36 h-28 rounded-xl overflow-hidden border-2 border-white/20 bg-gray-900 shadow-lg">
           <video ref={localVideoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
@@ -246,6 +314,15 @@ export const VideoCallModal = ({ callId, role, otherParty, onClose }: VideoCallM
           }`}
         >
           {isMuted ? <MicOff className="size-5 text-white" /> : <Mic className="size-5 text-white" />}
+        </button>
+
+        <button
+          onClick={toggleScreenShare}
+          className={`size-12 rounded-full flex items-center justify-center transition-colors ${
+            isScreenSharing ? "bg-blue-600 hover:bg-blue-700" : "bg-white/20 hover:bg-white/30"
+          }`}
+        >
+          <Monitor className="size-5 text-white" />
         </button>
 
         <button

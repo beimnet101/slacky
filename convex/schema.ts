@@ -59,6 +59,10 @@ const schema = defineSchema({
     parentMessageId: v.optional(v.id("messages")),
     conversationId: v.optional(v.id("conversations")),
     updatedAt: v.optional(v.number()),
+    callEvent: v.optional(v.object({
+      status: v.union(v.literal("missed"), v.literal("ended"), v.literal("declined")),
+      duration: v.optional(v.number()),
+    })),
 
 
   })
@@ -114,6 +118,8 @@ const schema = defineSchema({
     answer: v.optional(v.string()),
     callerCandidates: v.optional(v.array(v.string())),
     receiverCandidates: v.optional(v.array(v.string())),
+    conversationId: v.optional(v.id("conversations")),
+    startedAt: v.optional(v.number()),
   })
     .index("by_receiver", ["receiverId"])
     .index("by_caller", ["callerId"])

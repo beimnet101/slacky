@@ -9,7 +9,11 @@ const getMember = async (ctx: any, workspaceId: any, userId: any) => {
 };
 
 export const initiate = mutation({
-  args: { workspaceId: v.id("workspaces"), receiverId: v.id("members") },
+  args: {
+    workspaceId: v.id("workspaces"),
+    receiverId: v.id("members"),
+    conversationId: v.optional(v.id("conversations")),
+  },
   handler: async (ctx, args) => {
     const userId = await auth.getUserId(ctx);
     if (!userId) throw new Error("Unauthorized");
@@ -20,6 +24,7 @@ export const initiate = mutation({
       callerId: caller._id,
       receiverId: args.receiverId,
       status: "ringing",
+      conversationId: args.conversationId,
     });
   },
 });
@@ -36,7 +41,11 @@ export const answer = mutation({
   handler: async (ctx, args) => {
     const userId = await auth.getUserId(ctx);
     if (!userId) throw new Error("Unauthorized");
-    await ctx.db.patch(args.callId, { answer: args.answer, status: "active" });
+    await ctx.db.patch(args.callId, {
+      answer: args.answer,
+      status: "active",
+      startedAt: Date.now(),
+    });
   },
 });
 
@@ -44,13 +53,34 @@ export const decline = mutation({
   args: { callId: v.id("calls") },
   handler: async (ctx, args) => {
     await ctx.db.patch(args.callId, { status: "declined" });
+    const call = await ctx.db.get(args.callId);
+    if (!call?.conversationId) return;
+    await ctx.db.insert("messages", {
+      body: JSON.stringify({ ops: [{ insert: "\n" }] }),
+      memberId: call.callerId,
+      workspaceId: call.workspaceId,
+      conversationId: call.conversationId,
+      callEvent: { status: "missed" },
+    });
   },
 });
 
 export const end = mutation({
   args: { callId: v.id("calls") },
   handler: async (ctx, args) => {
+    const call = await ctx.db.get(args.callId);
+    if (!call) return;
     await ctx.db.patch(args.callId, { status: "ended" });
+    if (!call.conversationId) return;
+    const wasActive = !!call.startedAt;
+    const duration = wasActive ? Math.floor((Date.now() - call.startedAt!) / 1000) : undefined;
+    await ctx.db.insert("messages", {
+      body: JSON.stringify({ ops: [{ insert: "\n" }] }),
+      memberId: call.callerId,
+      workspaceId: call.workspaceId,
+      conversationId: call.conversationId,
+      callEvent: wasActive ? { status: "ended", duration } : { status: "missed" },
+    });
   },
 });
 

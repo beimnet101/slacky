@@ -115,6 +115,7 @@ export const MessageList = ({
                                 threadImage={message.threadImage}
                                 threadName={message.threadName}
                                 threadTimestamp={message.threadTimestamp}
+                                callEvent={(message as any).callEvent}
                             />
                         )
                     })}
