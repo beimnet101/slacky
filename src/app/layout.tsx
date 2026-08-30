@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 
 import './globals.css';
+import "@livekit/components-styles";
+import "@livekit/components-styles/prefabs";
 
 import { ConvexClientProvider } from "@/components/convex-client-provider";
 import { ConvexAuthNextjsServerProvider } from "@convex-dev/auth/nextjs/server";
