@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
+const CanvasEditorModal = dynamic(() => import("@/components/canvas-editor-modal").then(m => m.CanvasEditorModal), { ssr: false });
 import {
   Plus,
   Search,
@@ -306,9 +308,12 @@ function ShareCanvasDialog({ canvas, workspaceId, onClose }: ShareCanvasDialogPr
   );
 }
 
-function CanvasListItem({ canvas, onShare }: { canvas: Canvas; onShare: (canvas: Canvas) => void }) {
+function CanvasListItem({ canvas, onShare, onEdit }: { canvas: Canvas; onShare: (canvas: Canvas) => void; onEdit: (canvas: Canvas) => void }) {
   return (
-    <div className="flex items-center gap-3 px-4 py-3 hover:bg-white/5 rounded-lg cursor-pointer group">
+    <div
+      onClick={() => onEdit(canvas)}
+      className="flex items-center gap-3 px-4 py-3 hover:bg-white/5 rounded-lg cursor-pointer group"
+    >
       <div className="flex-shrink-0 w-8 h-8 bg-teal-600/20 rounded flex items-center justify-center">
         <FileIcon className="size-4 text-teal-400" />
       </div>
@@ -341,6 +346,7 @@ function AllFilesView({
   currentMemberId,
   onOpenTemplateModal,
   onShare,
+  onEdit,
 }: {
   canvases: Canvas[];
   search: string;
@@ -350,6 +356,7 @@ function AllFilesView({
   currentMemberId?: string;
   onOpenTemplateModal: () => void;
   onShare: (canvas: Canvas) => void;
+  onEdit: (canvas: Canvas) => void;
 }) {
   const [showTypeFilter, setShowTypeFilter] = useState(false);
 
@@ -456,7 +463,7 @@ function AllFilesView({
         {filtered.length > 0 ? (
           <div className="space-y-1">
             {filtered.map((canvas) => (
-              <CanvasListItem key={canvas._id} canvas={canvas} onShare={onShare} />
+              <CanvasListItem key={canvas._id} canvas={canvas} onShare={onShare} onEdit={onEdit} />
             ))}
           </div>
         ) : (
@@ -481,12 +488,14 @@ function CanvasesView({
   setSearch,
   onOpenTemplateModal,
   onShare,
+  onEdit,
 }: {
   canvases: Canvas[];
   search: string;
   setSearch: (v: string) => void;
   onOpenTemplateModal: () => void;
   onShare: (canvas: Canvas) => void;
+  onEdit: (canvas: Canvas) => void;
 }) {
   const filtered = canvases.filter((c) =>
     c.title.toLowerCase().includes(search.toLowerCase())
@@ -517,7 +526,7 @@ function CanvasesView({
         {filtered.length > 0 ? (
           <div className="space-y-1">
             {filtered.map((canvas) => (
-              <CanvasListItem key={canvas._id} canvas={canvas} onShare={onShare} />
+              <CanvasListItem key={canvas._id} canvas={canvas} onShare={onShare} onEdit={onEdit} />
             ))}
           </div>
         ) : (
@@ -542,7 +551,7 @@ function CanvasesView({
   );
 }
 
-function StarredView({ canvases, onShare }: { canvases: Canvas[]; onShare: (canvas: Canvas) => void }) {
+function StarredView({ canvases, onShare, onEdit }: { canvases: Canvas[]; onShare: (canvas: Canvas) => void; onEdit: (canvas: Canvas) => void }) {
   const starred = canvases.filter((c) => c.isStarred);
 
   return (
@@ -554,7 +563,7 @@ function StarredView({ canvases, onShare }: { canvases: Canvas[]; onShare: (canv
         {starred.length > 0 ? (
           <div className="space-y-1">
             {starred.map((canvas) => (
-              <CanvasListItem key={canvas._id} canvas={canvas} onShare={onShare} />
+              <CanvasListItem key={canvas._id} canvas={canvas} onShare={onShare} onEdit={onEdit} />
             ))}
           </div>
         ) : (
@@ -585,6 +594,7 @@ export default function FilesPage() {
   const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [activeTab, setActiveTab] = useState<ActiveTab>("all");
   const [sharingCanvas, setSharingCanvas] = useState<Canvas | null>(null);
+  const [editingCanvasId, setEditingCanvasId] = useState<Id<"canvases"> | null>(null);
 
   const navItems = [
     { id: "all" as ActiveView, label: "All files", icon: FolderOpen },
@@ -639,6 +649,7 @@ export default function FilesPage() {
             currentMemberId={currentMember?._id}
             onOpenTemplateModal={() => setShowTemplateModal(true)}
             onShare={setSharingCanvas}
+            onEdit={(c) => setEditingCanvasId(c._id as Id<"canvases">)}
           />
         )}
         {activeView === "canvases" && (
@@ -648,10 +659,15 @@ export default function FilesPage() {
             setSearch={setSearch}
             onOpenTemplateModal={() => setShowTemplateModal(true)}
             onShare={setSharingCanvas}
+            onEdit={(c) => setEditingCanvasId(c._id as Id<"canvases">)}
           />
         )}
         {activeView === "starred" && (
-          <StarredView canvases={canvases as Canvas[]} onShare={setSharingCanvas} />
+          <StarredView
+            canvases={canvases as Canvas[]}
+            onShare={setSharingCanvas}
+            onEdit={(c) => setEditingCanvasId(c._id as Id<"canvases">)}
+          />
         )}
       </div>
 
@@ -668,6 +684,14 @@ export default function FilesPage() {
         workspaceId={workspaceId}
         onClose={() => setSharingCanvas(null)}
       />
+
+      {/* Canvas editor */}
+      {editingCanvasId && (
+        <CanvasEditorModal
+          canvasId={editingCanvasId}
+          onClose={() => setEditingCanvasId(null)}
+        />
+      )}
     </div>
   );
 }

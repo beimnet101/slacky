@@ -4,19 +4,20 @@ import dynamic from "next/dynamic";
 
 const Renderer = dynamic(() => import("@/components/renderer"), { ssr: false })
 const Editor = dynamic(() => import("@/components/editor"), { ssr: false })
+const CanvasEditorModal = dynamic(() => import("@/components/canvas-editor-modal").then(m => m.CanvasEditorModal), { ssr: false })
 
 import { format, isToday, isYesterday } from "date-fns";
 import { Hint } from "./ui/hint";
 import { Avatar, AvatarImage, AvatarFallback } from "./ui/avatar";
 import { Thumbnail, VideoPlayer } from "./thumbnail";
-import { FileText } from "lucide-react";
+import { FileText, Pencil } from "lucide-react";
 import { Toolbar } from "./toolbar";
 import { useUpdateMessage } from "@/features/messages/api/use-update-message";
 import { useRemoveMessage } from "@/features/messages/api/use-remove-message";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useConfirm } from "@/hooks/use-confirm";
-import React from "react";
+import React, { useState } from "react";
 import { useToggleReaction } from "@/features/reactions/api/use-toggle-reactions";
 import { Reactions } from "./reactions";
 import { usePanel } from "@/hooks/use-panel";
@@ -96,6 +97,8 @@ export const Message = (
     const { mutate: removeMessage, isPending: isRemovingMessage } = useRemoveMessage();
     const { mutate: toggleReaction, isPending: isTogglingReaction } = useToggleReaction();
     const isPending = isUpdatingMessage || isTogglingReaction;
+
+    const [editingCanvasId, setEditingCanvasId] = useState<Id<"canvases"> | null>(null);
 
     const [ConfirmDialog, confirm] = useConfirm("Delete Message",
         "Are you sure you want to delete this message? This can not be undone"
@@ -225,7 +228,10 @@ export const Message = (
                                     </a>
                                 )}
                                 {canvas && (
-                                    <div className="flex items-start gap-2 border border-slate-200 rounded-lg p-3 my-2 max-w-[360px] bg-white hover:bg-slate-50 transition-colors">
+                                    <button
+                                        onClick={() => setEditingCanvasId(canvas._id as Id<"canvases">)}
+                                        className="flex items-start gap-2 border border-slate-200 rounded-lg p-3 my-2 max-w-[360px] bg-white hover:bg-slate-50 transition-colors text-left w-full group/canvas"
+                                    >
                                         <div className="flex-shrink-0 w-8 h-8 bg-teal-600/20 rounded flex items-center justify-center mt-0.5">
                                             <FileText className="size-4 text-teal-600" />
                                         </div>
@@ -234,7 +240,8 @@ export const Message = (
                                             <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{canvas.content.slice(0, 100)}</p>
                                             <span className="text-xs text-teal-600 font-medium mt-1 block">Canvas</span>
                                         </div>
-                                    </div>
+                                        <Pencil className="size-3.5 text-slate-400 opacity-0 group-hover/canvas:opacity-100 flex-shrink-0 mt-1" />
+                                    </button>
                                 )}
                                 {updatedAt ? (
                                     <span className="text-xs text-muted-foreground">
@@ -269,6 +276,13 @@ export const Message = (
 
                         />)}
                 </div>
+
+                {editingCanvasId && (
+                    <CanvasEditorModal
+                        canvasId={editingCanvasId}
+                        onClose={() => setEditingCanvasId(null)}
+                    />
+                )}
             </>
 
         );
@@ -332,7 +346,10 @@ export const Message = (
                                     </a>
                                 )}
                                 {canvas && (
-                                    <div className="flex items-start gap-2 border border-slate-200 rounded-lg p-3 my-2 max-w-[360px] bg-white hover:bg-slate-50 transition-colors">
+                                    <button
+                                        onClick={() => setEditingCanvasId(canvas._id as Id<"canvases">)}
+                                        className="flex items-start gap-2 border border-slate-200 rounded-lg p-3 my-2 max-w-[360px] bg-white hover:bg-slate-50 transition-colors text-left w-full group/canvas"
+                                    >
                                         <div className="flex-shrink-0 w-8 h-8 bg-teal-600/20 rounded flex items-center justify-center mt-0.5">
                                             <FileText className="size-4 text-teal-600" />
                                         </div>
@@ -341,7 +358,8 @@ export const Message = (
                                             <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{canvas.content.slice(0, 100)}</p>
                                             <span className="text-xs text-teal-600 font-medium mt-1 block">Canvas</span>
                                         </div>
-                                    </div>
+                                        <Pencil className="size-3.5 text-slate-400 opacity-0 group-hover/canvas:opacity-100 flex-shrink-0 mt-1" />
+                                    </button>
                                 )}
                                 {updatedAt ? (
                                     <span className="text-xs text-muted-foreground">(edited)</span>
@@ -373,6 +391,13 @@ export const Message = (
                     />)}
 
             </div>
+
+            {editingCanvasId && (
+                <CanvasEditorModal
+                    canvasId={editingCanvasId}
+                    onClose={() => setEditingCanvasId(null)}
+                />
+            )}
         </>
 
     )
