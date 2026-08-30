@@ -11,7 +11,6 @@ import {
   ControlBar,
   useParticipants,
 } from "@livekit/components-react";
-import "@livekit/components-react/dist/index.css";
 import { Track } from "livekit-client";
 import { Loader, Users } from "lucide-react";
 

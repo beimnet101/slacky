@@ -2,6 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
+@import "@livekit/components-styles";
+@import "@livekit/components-styles/prefabs";
+
 html,
 body,
 :root {
