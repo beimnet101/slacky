@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { useAction } from "convex/react";
+import { useAction, useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { useWorkspaceId } from "@/hooks/use-workspace-id";
@@ -214,6 +214,7 @@ export default function JiraPage() {
     const searchIssues = useAction(api.jira.searchIssues);
     const getProjects = useAction(api.jira.getProjects);
     const getProjectVersions = useAction(api.jira.getProjectVersions);
+    const jiraConnection = useQuery(api.jira.getConnection, { workspaceId });
 
     const [allIssues, setAllIssues] = useState<JiraIssueRow[]>([]);
     const [projects, setProjects] = useState<JiraProject[]>([]);
@@ -253,7 +254,7 @@ export default function JiraPage() {
         }
     };
 
-    useEffect(() => { loadAll(); }, [workspaceId]);
+    useEffect(() => { if (jiraConnection) loadAll(); }, [workspaceId, jiraConnection]);
 
     // ── Computed stats ──────────────────────────────────────────────────────
 
@@ -317,6 +318,29 @@ export default function JiraPage() {
             toast.error(err.message ?? "Failed to search issues");
         } finally { setLoadingSearch(false); }
     };
+
+    if (jiraConnection === undefined) {
+        return (
+            <div className="flex flex-col h-full items-center justify-center gap-3 text-muted-foreground">
+                <Loader2 className="size-6 animate-spin" />
+                <span className="text-sm">Loading…</span>
+            </div>
+        );
+    }
+
+    if (jiraConnection === null) {
+        return (
+            <div className="flex flex-col h-full items-center justify-center gap-4">
+                <div className="size-14 bg-slate-100 rounded-xl flex items-center justify-center">
+                    <span className="text-2xl font-bold text-slate-400">J</span>
+                </div>
+                <div className="text-center">
+                    <p className="font-semibold text-slate-700">Jira not connected</p>
+                    <p className="text-sm text-muted-foreground mt-1">Ask your workspace admin to connect Jira in Settings.</p>
+                </div>
+            </div>
+        );
+    }
 
     if (loading) {
         return (
