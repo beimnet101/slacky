@@ -227,6 +227,7 @@ export default function JiraPage() {
     const [myLoaded, setMyLoaded] = useState(false);
     const [activeTab, setActiveTab] = useState("overview");
     const [selectedPerson, setSelectedPerson] = useState<string | null>(null);
+    const [selectedBoardProject, setSelectedBoardProject] = useState<string | null>(null);
 
     // Load all issues + projects on mount
     const loadAll = async () => {
@@ -295,13 +296,6 @@ export default function JiraPage() {
         }
         return Array.from(map.values()).sort((a, b) => b.total - a.total);
     }, [allIssues]);
-
-    // Board columns
-    const boardColumns = useMemo(() => ({
-        todo: allIssues.filter((i) => i.statusCategory === "new" || i.statusCategory === "blue-grey"),
-        inProgress: allIssues.filter((i) => i.statusCategory === "indeterminate" || i.statusCategory === "yellow"),
-        done: allIssues.filter((i) => i.statusCategory === "done" || i.statusCategory === "green"),
-    }), [allIssues]);
 
     const loadMyIssues = async () => {
         setLoadingMy(true);
@@ -445,28 +439,66 @@ export default function JiraPage() {
                     </TabsContent>
 
                     {/* ── Board ── */}
-                    <TabsContent value="board" className="flex-1 overflow-hidden mt-4 px-6 pb-6">
-                        <div className="grid grid-cols-3 gap-4 h-full">
-                            {[
-                                { label: "To Do", issues: boardColumns.todo, color: "bg-slate-100 text-slate-700", dot: "bg-slate-400" },
-                                { label: "In Progress", issues: boardColumns.inProgress, color: "bg-yellow-100 text-yellow-800", dot: "bg-yellow-400" },
-                                { label: "Done", issues: boardColumns.done, color: "bg-green-100 text-green-800", dot: "bg-green-500" },
-                            ].map((col) => (
-                                <div key={col.label} className="flex flex-col bg-slate-50 rounded-xl border border-slate-200 overflow-hidden">
-                                    <div className={cn("flex items-center gap-2 px-3 py-2 border-b border-slate-200", col.color)}>
-                                        <span className={cn("size-2 rounded-full", col.dot)} />
-                                        <span className="text-xs font-semibold">{col.label}</span>
-                                        <span className="ml-auto text-xs font-bold">{col.issues.length}</span>
-                                    </div>
-                                    <div className="flex-1 overflow-y-auto p-2 space-y-2">
-                                        {col.issues.map((issue) => <KanbanCard key={issue.id} issue={issue} />)}
-                                        {col.issues.length === 0 && (
-                                            <p className="text-xs text-muted-foreground text-center py-6">No issues</p>
-                                        )}
-                                    </div>
-                                </div>
+                    <TabsContent value="board" className="flex-1 overflow-hidden mt-4 flex flex-col">
+                        {/* Project selector */}
+                        <div className="flex items-center gap-2 px-6 mb-3 flex-wrap flex-shrink-0">
+                            <button
+                                onClick={() => setSelectedBoardProject(null)}
+                                className={cn(
+                                    "text-xs px-3 py-1.5 rounded-full border font-medium transition-colors",
+                                    !selectedBoardProject
+                                        ? "bg-blue-600 text-white border-blue-600"
+                                        : "text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-50"
+                                )}
+                            >
+                                All Projects
+                            </button>
+                            {projectStats.map((p) => (
+                                <button
+                                    key={p.key}
+                                    onClick={() => setSelectedBoardProject(p.key)}
+                                    className={cn(
+                                        "text-xs px-3 py-1.5 rounded-full border font-medium transition-colors",
+                                        selectedBoardProject === p.key
+                                            ? "bg-blue-600 text-white border-blue-600"
+                                            : "text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-50"
+                                    )}
+                                >
+                                    <span className="font-mono mr-1">{p.key}</span>
+                                    {p.name !== p.key && <span className="hidden sm:inline">{p.name}</span>}
+                                </button>
                             ))}
                         </div>
+                        {/* Kanban columns */}
+                        {(() => {
+                            const filtered = selectedBoardProject
+                                ? allIssues.filter((i) => i.projectKey === selectedBoardProject)
+                                : allIssues;
+                            const cols = [
+                                { label: "To Do", issues: filtered.filter((i) => i.statusCategory === "new" || i.statusCategory === "blue-grey"), color: "bg-slate-100 text-slate-700", dot: "bg-slate-400" },
+                                { label: "In Progress", issues: filtered.filter((i) => i.statusCategory === "indeterminate" || i.statusCategory === "yellow"), color: "bg-yellow-100 text-yellow-800", dot: "bg-yellow-400" },
+                                { label: "Done", issues: filtered.filter((i) => i.statusCategory === "done" || i.statusCategory === "green"), color: "bg-green-100 text-green-800", dot: "bg-green-500" },
+                            ];
+                            return (
+                                <div className="grid grid-cols-3 gap-4 flex-1 overflow-hidden px-6 pb-6">
+                                    {cols.map((col) => (
+                                        <div key={col.label} className="flex flex-col bg-slate-50 rounded-xl border border-slate-200 overflow-hidden">
+                                            <div className={cn("flex items-center gap-2 px-3 py-2 border-b border-slate-200", col.color)}>
+                                                <span className={cn("size-2 rounded-full", col.dot)} />
+                                                <span className="text-xs font-semibold">{col.label}</span>
+                                                <span className="ml-auto text-xs font-bold">{col.issues.length}</span>
+                                            </div>
+                                            <div className="flex-1 overflow-y-auto p-2 space-y-2">
+                                                {col.issues.map((issue) => <KanbanCard key={issue.id} issue={issue} />)}
+                                                {col.issues.length === 0 && (
+                                                    <p className="text-xs text-muted-foreground text-center py-6">No issues</p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            );
+                        })()}
                     </TabsContent>
 
                     {/* ── People ── */}
