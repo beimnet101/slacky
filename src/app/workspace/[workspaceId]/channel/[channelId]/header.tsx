@@ -12,8 +12,9 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog";
-import { TrashIcon, Video } from "lucide-react";
+import { TrashIcon, Video, LayoutList } from "lucide-react";
 import { useState } from "react";
+import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { DialogClose } from "@radix-ui/react-dialog";
 import { useChannelId } from "@/hooks/use-channel-id";
@@ -30,9 +31,11 @@ interface HeaderProps {
     onStartConference?: () => void;
     hasActiveConference?: boolean;
     conferenceStartedBy?: string;
+    onShowTasks?: () => void;
+    showTasks?: boolean;
 }
 
-export const Header = ({ title, onStartConference, hasActiveConference, conferenceStartedBy }: HeaderProps) => {
+export const Header = ({ title, onStartConference, hasActiveConference, conferenceStartedBy, onShowTasks, showTasks }: HeaderProps) => {
 
 
     const router = useRouter();
@@ -191,6 +194,17 @@ export const Header = ({ title, onStartConference, hasActiveConference, conferen
             </Dialog>
 
             <div className="ml-auto flex items-center gap-2">
+                {!!onShowTasks && (
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className={cn("size-8", showTasks ? "bg-blue-50 text-blue-600" : "text-slate-500 hover:text-slate-800 hover:bg-gray-100")}
+                        onClick={onShowTasks}
+                        title="Tasks"
+                    >
+                        <LayoutList className="size-4" />
+                    </Button>
+                )}
                 {hasActiveConference && (
                     <div className="flex items-center gap-1.5 bg-green-100 text-green-700 text-xs font-semibold px-2 py-1 rounded-full">
                         <div className="size-1.5 rounded-full bg-green-500 animate-pulse" />

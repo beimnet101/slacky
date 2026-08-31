@@ -16,6 +16,7 @@ import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { api } from "../../../../../../convex/_generated/api";
 import dynamic from "next/dynamic";
 import { useCurrentMember } from "@/features/members/api/use-current-member";
+import { JiraTasksPanel } from "@/components/jira-tasks-panel";
 
 const VideoConferenceModal = dynamic(
   () => import("@/components/video-conference-modal").then(m => m.VideoConferenceModal),
@@ -29,6 +30,8 @@ const ChannelIdPage = () => {
   const { data: channel, isLoading: channelLoading } = useGetChannel({ id: channelId });
   const { data: currentUser } = useCurrentUser();
   const [inConference, setInConference] = useState(false);
+  const [showTasks, setShowTasks] = useState(false);
+  const jiraConnection = useQuery(api.jira.getConnection, { workspaceId });
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -82,12 +85,15 @@ const ChannelIdPage = () => {
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex h-full">
+      <div className="flex flex-col flex-1 min-w-0">
       <Header
         title={channel.name}
         onStartConference={activeConference ? () => setInConference(true) : handleStartConference}
         hasActiveConference={!!activeConference}
         conferenceStartedBy={activeConference?.startedByName}
+        onShowTasks={jiraConnection ? () => setShowTasks((v) => !v) : undefined}
+        showTasks={showTasks}
       />
 
       {/* Live conference banner */}
@@ -144,6 +150,11 @@ const ChannelIdPage = () => {
         channelId={channelId}
       />
       <ChatInput placeholder={`Message # ${channel.name}`} />
+      </div>
+
+      {showTasks && jiraConnection && (
+        <JiraTasksPanel workspaceId={workspaceId} onClose={() => setShowTasks(false)} />
+      )}
 
       {inConference && currentUser && (
         <VideoConferenceModal

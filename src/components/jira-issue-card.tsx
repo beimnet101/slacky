@@ -125,6 +125,19 @@ export const JiraIssueCard = ({ issueKey, workspaceId }: JiraIssueCardProps) => 
                         <span className="text-xs text-muted-foreground">{issue.issueType}</span>
                     </div>
                     <p className="text-sm font-medium text-slate-800 truncate">{issue.summary}</p>
+                    {/* Progress bar */}
+                    <div className="mt-1.5 h-1 w-full bg-slate-100 rounded-full overflow-hidden">
+                        <div
+                            className={cn(
+                                "h-full rounded-full transition-all",
+                                issue.statusCategory === "done" || issue.statusCategory === "green"
+                                    ? "bg-green-500 w-full"
+                                    : issue.statusCategory === "indeterminate" || issue.statusCategory === "yellow"
+                                        ? "bg-yellow-400 w-1/2"
+                                        : "bg-slate-300 w-[8%]"
+                            )}
+                        />
+                    </div>
                     {issue.assignee && (
                         <div className="flex items-center gap-1.5 mt-1.5">
                             <Avatar className="size-4">
