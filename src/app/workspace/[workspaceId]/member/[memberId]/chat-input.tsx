@@ -7,9 +7,9 @@ import { toast } from "sonner";
 import { useGenerateUploadUrl } from "@/features/upload/api/use-generate-upload-url";
 import { Id } from "../../../../../../convex/_generated/dataModel";
 import { useGetCanvases } from "@/features/canvases/api/use-get-canvases";
-import { useAction, useQuery } from "convex/react";
+import { useQuery } from "convex/react";
 import { api } from "../../../../../../convex/_generated/api";
-import { XIcon } from "lucide-react";
+import { JiraCreateIssueModal } from "@/components/jira-create-issue-modal";
 
 const Editor = dynamic(() => import("@/components/editor"), { ssr: false });
 
@@ -29,19 +29,11 @@ type CreateMessageValues = {
   canvasId?: Id<"canvases">;
 }
 
-type PendingAssignment = {
-  issueKey: string;
-  jiraAccountId: string;
-  jiraDisplayName: string;
-};
-
 export const ChatInput = ({ placeholder, conversationId }: ChatInputProps) => {
   const [isPending, setIsPendng] = useState(false);
   const [editorKey, setEditorKey] = useState(0);
-  const [pendingAssignments, setPendingAssignments] = useState<PendingAssignment[]>([]);
-  const [showPanel, setShowPanel] = useState(false);
-  const [issueKeyInput, setIssueKeyInput] = useState("");
-  const [selectedAccountId, setSelectedAccountId] = useState("");
+  const [showJiraModal, setShowJiraModal] = useState(false);
+  const [jiraModalBody, setJiraModalBody] = useState("");
 
   const editorRef = useRef<Quill | null>(null);
   const workspaceId = useWorkspaceId();
@@ -50,27 +42,25 @@ export const ChatInput = ({ placeholder, conversationId }: ChatInputProps) => {
   const { mutate: createMessage } = useCreateMessage();
   const { data: canvases } = useGetCanvases({ workspaceId });
   const jiraConnection = useQuery(api.jira.getConnection, { workspaceId });
-  const workspaceLinks = useQuery(api.jira.getWorkspaceLinks, jiraConnection ? { workspaceId } : "skip");
-  const assignIssue = useAction(api.jira.assignIssue);
 
-  const jiraConnected = !!jiraConnection;
+  const handleJiraAssign = () => {
+    const contents = editorRef.current?.getContents();
+    const body = contents ? JSON.stringify(contents) : "";
+    setJiraModalBody(body);
+    setShowJiraModal(true);
+  };
 
-  const handleAddAssignment = () => {
-    const key = issueKeyInput.trim().toUpperCase();
-    if (!/^[A-Z][A-Z0-9]*-\d+$/.test(key)) {
-      toast.error("Invalid issue key — use format like ABC-123");
-      return;
-    }
-    const link = workspaceLinks?.find((l) => l.jiraAccountId === selectedAccountId);
-    if (!key || !link) return;
-    const id = key + link.jiraAccountId;
-    if (pendingAssignments.find((a) => a.issueKey + a.jiraAccountId === id)) return;
-    setPendingAssignments((prev) => [
-      ...prev,
-      { issueKey: key, jiraAccountId: link.jiraAccountId, jiraDisplayName: link.jiraDisplayName },
-    ]);
-    setIssueKeyInput("");
-    setShowPanel(false);
+  // Called by JiraCreateIssueModal when issue is created — sends the draft message
+  const handleSendFromModal = (body: string) => {
+    const plain = (() => {
+      try {
+        const delta = JSON.parse(body);
+        return delta?.ops?.map((op: any) => (typeof op.insert === "string" ? op.insert : "")).join("").trim() ?? "";
+      } catch { return body.trim(); }
+    })();
+    if (!plain) return;
+    createMessage({ conversationId, workspaceId, body });
+    setEditorKey((prev) => prev + 1);
   };
 
   const handleSubmit = async ({
@@ -122,17 +112,7 @@ export const ChatInput = ({ placeholder, conversationId }: ChatInputProps) => {
       }
 
       await createMessage(values, { throwError: true });
-
-      for (const a of pendingAssignments) {
-        assignIssue({ workspaceId, issueKey: a.issueKey, jiraAccountId: a.jiraAccountId })
-          .then(() => toast.success(`Assigned ${a.issueKey} to ${a.jiraDisplayName}`))
-          .catch(() => toast.error(`Failed to assign ${a.issueKey}`));
-      }
-
       setEditorKey((prev) => prev + 1);
-      setPendingAssignments([]);
-      setShowPanel(false);
-      setIssueKeyInput("");
     } catch {
       toast.error("Failed to send message");
     } finally {
@@ -141,74 +121,8 @@ export const ChatInput = ({ placeholder, conversationId }: ChatInputProps) => {
     }
   };
 
-  const handleJiraAssign = () => {
-    setShowPanel(true);
-    if (!selectedAccountId && workspaceLinks?.[0]) setSelectedAccountId(workspaceLinks[0].jiraAccountId);
-  };
-
   return (
     <div className="px-5 w-full">
-      {/* Pending assignment chips */}
-      {pendingAssignments.length > 0 && (
-        <div className="flex flex-wrap gap-1 mb-1">
-          {pendingAssignments.map((a) => (
-            <span
-              key={a.issueKey + a.jiraAccountId}
-              className="inline-flex items-center gap-1.5 bg-blue-50 border border-blue-200 rounded px-2 py-0.5 text-xs text-blue-800"
-            >
-              <span className="size-3.5 bg-blue-600 rounded flex items-center justify-center text-white font-bold text-[8px]">J</span>
-              <span className="font-mono font-semibold">{a.issueKey}</span>
-              <span className="text-blue-500">→</span>
-              <span>{a.jiraDisplayName}</span>
-              <button
-                onClick={() => setPendingAssignments((prev) => prev.filter((x) => x.issueKey + x.jiraAccountId !== a.issueKey + a.jiraAccountId))}
-                className="text-blue-400 hover:text-blue-600 ml-0.5"
-              >
-                <XIcon className="size-2.5" />
-              </button>
-            </span>
-          ))}
-        </div>
-      )}
-
-      {/* Assign panel (shown when J button is clicked) */}
-      {showPanel && (
-        <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-md px-3 py-2 mb-1">
-          <input
-            type="text"
-            placeholder="Issue key (e.g. ABC-123)"
-            value={issueKeyInput}
-            onChange={(e) => setIssueKeyInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleAddAssignment()}
-            autoFocus
-            className="text-xs border border-slate-200 rounded px-2 py-1 w-36 focus:outline-none focus:border-blue-300"
-          />
-          <select
-            value={selectedAccountId}
-            onChange={(e) => setSelectedAccountId(e.target.value)}
-            className="text-xs border border-slate-200 rounded px-2 py-1 focus:outline-none focus:border-blue-300 bg-white"
-            disabled={!workspaceLinks?.length}
-          >
-            <option value="">{workspaceLinks?.length ? "Assignee" : "No linked accounts"}</option>
-            {workspaceLinks?.map((l) => (
-              <option key={l.jiraAccountId} value={l.jiraAccountId}>
-                {l.jiraDisplayName}
-              </option>
-            ))}
-          </select>
-          <button
-            onClick={handleAddAssignment}
-            disabled={!issueKeyInput.trim() || !selectedAccountId}
-            className="text-xs px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-40"
-          >
-            Add
-          </button>
-          <button onClick={() => setShowPanel(false)} className="text-xs text-slate-400 hover:text-slate-600">
-            Cancel
-          </button>
-        </div>
-      )}
-
       <Editor
         key={editorKey}
         placeholder={placeholder}
@@ -216,9 +130,19 @@ export const ChatInput = ({ placeholder, conversationId }: ChatInputProps) => {
         onSubmit={handleSubmit}
         disabled={isPending}
         innerRef={editorRef}
-        onJiraAssign={jiraConnected ? handleJiraAssign : undefined}
+        onJiraAssign={jiraConnection ? handleJiraAssign : undefined}
         workspaceCanvases={canvases?.map((c: { _id: string; title: string }) => ({ _id: c._id, title: c.title })) ?? []}
       />
+
+      {showJiraModal && (
+        <JiraCreateIssueModal
+          messageBody={jiraModalBody}
+          workspaceId={workspaceId}
+          conversationId={conversationId}
+          onSendMessage={handleSendFromModal}
+          onClose={() => setShowJiraModal(false)}
+        />
+      )}
     </div>
   );
 };

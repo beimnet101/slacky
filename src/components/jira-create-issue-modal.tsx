@@ -30,6 +30,7 @@ import { useCreateMessage } from "@/features/messages/api/use-create-message";
 interface JiraCreateIssueModalProps {
     messageBody: string;
     onClose: () => void;
+    onSendMessage?: (body: string) => void;
     workspaceId: Id<"workspaces">;
     channelId?: Id<"channels">;
     conversationId?: Id<"conversations">;
@@ -51,6 +52,7 @@ function extractPlainText(body: string): string {
 export const JiraCreateIssueModal = ({
     messageBody,
     onClose,
+    onSendMessage,
     workspaceId,
     channelId,
     conversationId,
@@ -142,7 +144,12 @@ export const JiraCreateIssueModal = ({
             const result = await createIssue({ workspaceId, fields });
             setCreatedIssue(result);
 
-            // Post message in channel
+            // Send the original draft message if provided
+            if (onSendMessage && messageBody) {
+                onSendMessage(messageBody);
+            }
+
+            // Post Jira notification in channel
             if (channelId || conversationId) {
                 const notifyBody = JSON.stringify({
                     ops: [
