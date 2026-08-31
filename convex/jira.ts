@@ -415,15 +415,18 @@ export const searchIssues = action({
     }> => {
         const conn = await ctx.runQuery(api.jiraHelpers.getConnectionInternal, { workspaceId: args.workspaceId });
         if (!conn) throw new Error("Jira not connected");
-        const url = new URL(`https://${conn.domain}/rest/api/3/search`);
-        url.searchParams.set("jql", args.jql);
-        url.searchParams.set("maxResults", String(args.maxResults ?? 50));
-        url.searchParams.set("fields", "summary,status,assignee,priority,updated,issuetype,project");
-        const resp = await fetch(url.toString(), {
+        const resp = await fetch(`https://${conn.domain}/rest/api/3/search/jql`, {
+            method: "POST",
             headers: {
                 Authorization: jiraAuthHeader(conn.email, conn.apiToken),
                 Accept: "application/json",
+                "Content-Type": "application/json",
             },
+            body: JSON.stringify({
+                jql: args.jql,
+                maxResults: args.maxResults ?? 50,
+                fields: ["summary", "status", "assignee", "priority", "updated", "issuetype", "project"],
+            }),
         });
         if (!resp.ok) throw new Error(`Failed to search issues: ${resp.status}`);
         const data = await resp.json();
