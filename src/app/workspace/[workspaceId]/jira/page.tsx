@@ -220,7 +220,7 @@ export default function JiraPage() {
     const [versions, setVersions] = useState<Record<string, JiraVersion[]>>({});
     const [myIssues, setMyIssues] = useState<JiraIssueRow[]>([]);
     const [searchResults, setSearchResults] = useState<JiraIssueRow[]>([]);
-    const [jql, setJql] = useState("ORDER BY updated DESC");
+    const [jql, setJql] = useState("project IS NOT EMPTY ORDER BY updated DESC");
     const [loading, setLoading] = useState(true);
     const [loadingMy, setLoadingMy] = useState(false);
     const [loadingSearch, setLoadingSearch] = useState(false);
@@ -233,7 +233,7 @@ export default function JiraPage() {
         setLoading(true);
         try {
             const [issueResult, projectList] = await Promise.all([
-                searchIssues({ workspaceId, jql: "ORDER BY updated DESC", maxResults: 100 }),
+                searchIssues({ workspaceId, jql: "project IS NOT EMPTY ORDER BY updated DESC", maxResults: 100 }),
                 getProjects({ workspaceId }),
             ]);
             setAllIssues(issueResult.issues as JiraIssueRow[]);
