@@ -446,7 +446,10 @@ export const searchIssues = action({
                 priority: issue.fields?.priority?.name as string,
                 priorityIconUrl: (issue.fields?.priority?.iconUrl ?? "") as string,
                 issueType: issue.fields?.issuetype?.name as string,
+                issueTypeIconUrl: (issue.fields?.issuetype?.iconUrl ?? "") as string,
                 updated: issue.fields?.updated as string,
+                projectKey: (issue.fields?.project?.key ?? issue.key.split("-")[0]) as string,
+                projectName: (issue.fields?.project?.name ?? "") as string,
                 domain: conn.domain as string,
             })),
             total: data.total as number,
@@ -566,6 +569,35 @@ export const assignIssue = action({
             throw new Error(`Failed to assign issue: ${resp.status} ${text}`);
         }
         return { success: true };
+    },
+});
+
+export const getProjectVersions = action({
+    args: { workspaceId: v.id("workspaces"), projectKey: v.string() },
+    handler: async (ctx, args): Promise<Array<{
+        id: string; name: string; released: boolean;
+        releaseDate?: string; description?: string;
+    }>> => {
+        const conn = await ctx.runQuery(api.jiraHelpers.getConnectionInternal, { workspaceId: args.workspaceId });
+        if (!conn) throw new Error("Jira not connected");
+        const resp = await fetch(
+            `https://${conn.domain}/rest/api/3/project/${encodeURIComponent(args.projectKey)}/versions`,
+            {
+                headers: {
+                    Authorization: jiraAuthHeader(conn.email, conn.apiToken),
+                    Accept: "application/json",
+                },
+            }
+        );
+        if (!resp.ok) throw new Error(`Failed to fetch versions: ${resp.status}`);
+        const data = await resp.json();
+        return (data as any[]).map((v) => ({
+            id: v.id as string,
+            name: v.name as string,
+            released: v.released as boolean,
+            releaseDate: v.releaseDate as string | undefined,
+            description: v.description as string | undefined,
+        }));
     },
 });
 
