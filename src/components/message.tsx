@@ -213,6 +213,12 @@ export const Message = (
                     <div className="size-4 bg-blue-600 rounded flex items-center justify-center text-white font-bold text-[10px] flex-shrink-0">J</div>
                     <span className="text-blue-800 font-mono text-xs font-semibold">{s.issueKey}</span>
                     <span className="text-blue-700 text-xs">→</span>
+                    <Avatar className="size-5 flex-shrink-0">
+                        <AvatarImage src={s.jiraAvatarUrl} />
+                        <AvatarFallback className="text-[9px] bg-blue-200 text-blue-800">
+                            {s.jiraDisplayName.charAt(0)}
+                        </AvatarFallback>
+                    </Avatar>
                     <span className="text-blue-800 text-xs">{s.jiraDisplayName}</span>
                     <span className="text-muted-foreground text-xs">Assign?</span>
                     <button
