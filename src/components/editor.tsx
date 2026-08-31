@@ -28,6 +28,7 @@ interface EditorProps {
     onSubmit: (value: EditorValue) => void;
     onCancel?: () => void;
     onChange?: (body: string) => void;
+    onJiraAssign?: () => void;
     variant?: "create" | "update";
     placeholder?: string;
     defaultValue?: Delta | Op[];
@@ -48,6 +49,7 @@ const Editor = ({
     disabled,
     onSubmit,
     onChange,
+    onJiraAssign,
     workspaceCanvases = [],
 }: EditorProps
 ) => {
@@ -372,6 +374,19 @@ const Editor = ({
                                         <Paperclip className="size-4" />
                                     </Button>
                                 </Hint>
+                                {!!onJiraAssign && (
+                                    <Hint label="Assign Jira issue">
+                                        <Button
+                                            disabled={disabled}
+                                            size="iconSm"
+                                            variant="ghost"
+                                            onClick={onJiraAssign}
+                                            className="text-blue-500 hover:text-blue-700 font-bold"
+                                        >
+                                            <span className="text-[11px] font-extrabold leading-none">J</span>
+                                        </Button>
+                                    </Hint>
+                                )}
                                 {workspaceCanvases.length > 0 && (
                                     <div className="relative">
                                         <Hint label="Attach canvas">
