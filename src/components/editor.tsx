@@ -27,6 +27,7 @@ type EditorValue = {
 interface EditorProps {
     onSubmit: (value: EditorValue) => void;
     onCancel?: () => void;
+    onChange?: (body: string) => void;
     variant?: "create" | "update";
     placeholder?: string;
     defaultValue?: Delta | Op[];
@@ -46,6 +47,7 @@ const Editor = ({
     innerRef,
     disabled,
     onSubmit,
+    onChange,
     workspaceCanvases = [],
 }: EditorProps
 ) => {
@@ -63,6 +65,7 @@ const Editor = ({
 
     const containerRef = useRef<HTMLDivElement>(null);
     const submitRef = useRef(onSubmit);
+    const onChangeRef = useRef(onChange);
     const placeholderRef = useRef(placeholder);
     const quillRef = useRef<Quill | null>(null);
     const defaultValueRef = useRef(defaultValue);
@@ -73,6 +76,7 @@ const Editor = ({
 
     useLayoutEffect(() => {
         submitRef.current = onSubmit;
+        onChangeRef.current = onChange;
         placeholderRef.current = placeholder;
         defaultValueRef.current = defaultValue;
         disabledRef.current = disabled;
@@ -153,6 +157,7 @@ const Editor = ({
         setText(quill.getText());
         quill.on(Quill.events.TEXT_CHANGE, () => {
             setText(quill.getText());
+            onChangeRef.current?.(JSON.stringify(quill.getContents()));
         })
         return () => {
 
