@@ -415,6 +415,7 @@ export const searchIssues = action({
     }> => {
         const conn = await ctx.runQuery(api.jiraHelpers.getConnectionInternal, { workspaceId: args.workspaceId });
         if (!conn) throw new Error("Jira not connected");
+        const maxResults = Math.min(args.maxResults ?? 50, 100);
         const resp = await fetch(`https://${conn.domain}/rest/api/3/search/jql`, {
             method: "POST",
             headers: {
@@ -424,12 +425,16 @@ export const searchIssues = action({
             },
             body: JSON.stringify({
                 jql: args.jql,
-                maxResults: args.maxResults ?? 50,
+                maxResults,
                 fields: ["summary", "status", "assignee", "priority", "updated", "issuetype", "project"],
             }),
         });
-        if (!resp.ok) throw new Error(`Failed to search issues: ${resp.status}`);
+        if (!resp.ok) {
+            const text = await resp.text();
+            throw new Error(`Failed to search issues: ${resp.status} - ${text}`);
+        }
         const data = await resp.json();
+        if (!data.issues) throw new Error(`Unexpected response: ${JSON.stringify(data).slice(0, 300)}`);
         return {
             issues: (data.issues as any[]).map((issue) => ({
                 key: issue.key as string,

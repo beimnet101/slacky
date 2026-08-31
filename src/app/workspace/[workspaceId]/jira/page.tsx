@@ -233,7 +233,7 @@ export default function JiraPage() {
         setLoading(true);
         try {
             const [issueResult, projectList] = await Promise.all([
-                searchIssues({ workspaceId, jql: "ORDER BY project, status, updated DESC", maxResults: 200 }),
+                searchIssues({ workspaceId, jql: "ORDER BY updated DESC", maxResults: 100 }),
                 getProjects({ workspaceId }),
             ]);
             setAllIssues(issueResult.issues as JiraIssueRow[]);
